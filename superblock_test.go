@@ -41,7 +41,4 @@ func TestParseSuperblock(t *testing.T) {
 	} else if esb.SHashSeed != [4]uint32{0x36b23193, 0x8241e711, 0x56e1ab9, 0x8cb728de} {
 		t.Fatalf("SHashSeed not correct.")
 	}
-
-	// TODO(dustin): !! Debugging.
-	sb = sb
 }

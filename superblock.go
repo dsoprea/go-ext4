@@ -2,6 +2,7 @@ package ext4
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"encoding/binary"
@@ -18,59 +19,28 @@ var (
 )
 
 const (
-	SB_STATE_CLEANLY_UNMOUNTED       = 0x1
-	SB_STATE_ERRORS_DETECTED         = 0x2
-	SB_STATE_ORPHANS_BEING_RECOVERED = 0x4
+	SbStateCleanlyUnmounted      = 0x1
+	SbStateErrorsDetected        = 0x2
+	SbStateOrphansBeingRecovered = 0x4
 )
 
 const (
-	SB_ERRORS_CONTINUE         = 0x1
-	SB_ERRORS_REMOUNT_READONLY = 0x2
-	SB_ERRORS_PANIC            = 0x3
+	SbErrorsContinue        = 0x1
+	SbErrorsRemountReadonly = 0x2
+	SbErrorsPanic           = 0x3
 )
 
 const (
-	SB_OS_LINUX   = 0x0
-	SB_OS_HURD    = 0x1
-	SB_OS_MASIX   = 0x2
-	SB_OS_FREEBSD = 0x3
-	SB_OS_LITES   = 0x4
+	SbOsLinux   = 0x0
+	SbOsHurd    = 0x1
+	SbOsMasix   = 0x2
+	SbOsFreebsd = 0x3
+	SbOsLites   = 0x4
 )
 
 const (
-	SB_REVLEVEL_GOOD_OLD_REV = 0x0
-	SB_REVLEVEL_DYNAMIC_REV  = 0x1
-)
-
-const (
-	ESB_FEATURECOMPAT_FEATURE_COMPAT_DIR_PREALLOC  = uint32(0x0001)
-	ESB_FEATURECOMPAT_FEATURE_COMPAT_IMAGIC_INODES = uint32(0x0002)
-	ESB_FEATURECOMPAT_FEATURE_COMPAT_HAS_JOURNAL   = uint32(0x0004)
-	ESB_FEATURECOMPAT_FEATURE_COMPAT_EXT_ATTR      = uint32(0x0008)
-	ESB_FEATURECOMPAT_FEATURE_COMPAT_RESIZE_INODE  = uint32(0x0010)
-	ESB_FEATURECOMPAT_FEATURE_COMPAT_DIR_INDEX     = uint32(0x0020)
-)
-
-const (
-	ESB_FEATURERO_COMPAT_SPARSE_SUPER = uint32(0x0001)
-	ESB_FEATURERO_COMPAT_LARGE_FILE   = uint32(0x0002)
-	ESB_FEATURERO_COMPAT_BTREE_DIR    = uint32(0x0004)
-	ESB_FEATURERO_COMPAT_HUGE_FILE    = uint32(0x0008)
-	ESB_FEATURERO_COMPAT_GDT_CSUM     = uint32(0x0010)
-	ESB_FEATURERO_COMPAT_DIR_NLINK    = uint32(0x0020)
-	ESB_FEATURERO_COMPAT_EXTRA_ISIZE  = uint32(0x0040)
-)
-
-const (
-	ESB_FEATUREINCOMPAT_COMPRESSION = uint32(0x0001)
-	ESB_FEATUREINCOMPAT_FILETYPE    = uint32(0x0002)
-	ESB_FEATUREINCOMPAT_RECOVER     = uint32(0x0004) /* Needs recovery */
-	ESB_FEATUREINCOMPAT_JOURNAL_DEV = uint32(0x0008) /* Journal device */
-	ESB_FEATUREINCOMPAT_META_BG     = uint32(0x0010)
-	ESB_FEATUREINCOMPAT_EXTENTS     = uint32(0x0040) /* extents support */
-	ESB_FEATUREINCOMPAT_64BIT       = uint32(0x0080)
-	ESB_FEATUREINCOMPAT_MMP         = uint32(0x0100)
-	ESB_FEATUREINCOMPAT_FLEX_BG     = uint32(0x0200)
+	SbRevlevelGoodOldRev = 0x0
+	SbRevlevelDynamicRev = 0x1
 )
 
 type Superblock struct {
@@ -102,6 +72,105 @@ type Superblock struct {
 	SDefResuid         uint16
 	SDefResgid         uint16
 }
+
+const (
+	SbeFeatureCompatDirPrealloc  = uint32(0x0001)
+	SbeFeatureCompatImagicInodes = uint32(0x0002)
+	SbeFeatureCompatHasJournal   = uint32(0x0004)
+	SbeFeatureCompatExtAttr      = uint32(0x0008)
+	SbeFeatureCompatResizeInode  = uint32(0x0010)
+	SbeFeatureCompatDirIndex     = uint32(0x0020)
+)
+
+var (
+	SbeFeatureCompatNames = []string{
+		"DirIndex",
+		"DirPrealloc",
+		"ExtAttr",
+		"HasJournal",
+		"ImagicInodes",
+		"ResizeInode",
+	}
+
+	SbeFeatureCompatLookup = map[string]uint32{
+		"DirPrealloc":  SbeFeatureCompatDirPrealloc,
+		"ImagicInodes": SbeFeatureCompatImagicInodes,
+		"HasJournal":   SbeFeatureCompatHasJournal,
+		"ExtAttr":      SbeFeatureCompatExtAttr,
+		"ResizeInode":  SbeFeatureCompatResizeInode,
+		"DirIndex":     SbeFeatureCompatDirIndex,
+	}
+)
+
+const (
+	SbeFeatureRoCompatSparseSuper = uint32(0x0001)
+	SbeFeatureRoCompatLargeFile   = uint32(0x0002)
+	SbeFeatureRoCompatBtreeDir    = uint32(0x0004)
+	SbeFeatureRoCompatHugeFile    = uint32(0x0008)
+	SbeFeatureRoCompatGdtCsum     = uint32(0x0010)
+	SbeFeatureRoCompatDirNlink    = uint32(0x0020)
+	SbeFeatureRoCompatExtraIsize  = uint32(0x0040)
+)
+
+var (
+	SbeFeatureRoCompatNames = []string{
+		"BtreeDir",
+		"DirNlink",
+		"ExtraIsize",
+		"GdtCsum",
+		"HugeFile",
+		"LargeFile",
+		"SparseSuper",
+	}
+
+	SbeFeatureRoCompatLookup = map[string]uint32{
+		"SparseSuper": SbeFeatureRoCompatSparseSuper,
+		"LargeFile":   SbeFeatureRoCompatLargeFile,
+		"BtreeDir":    SbeFeatureRoCompatBtreeDir,
+		"HugeFile":    SbeFeatureRoCompatHugeFile,
+		"GdtCsum":     SbeFeatureRoCompatGdtCsum,
+		"DirNlink":    SbeFeatureRoCompatDirNlink,
+		"ExtraIsize":  SbeFeatureRoCompatExtraIsize,
+	}
+)
+
+const (
+	SbeFeatureIncompatCompression = uint32(0x0001)
+	SbeFeatureIncompatFiletype    = uint32(0x0002)
+	SbeFeatureIncompatRecover     = uint32(0x0004) /* Needs recovery */
+	SbeFeatureIncompatJournalDev  = uint32(0x0008) /* Journal device */
+	SbeFeatureIncompatMetaBg      = uint32(0x0010)
+	SbeFeatureIncompatExtents     = uint32(0x0040) /* extents support */
+	SbeFeatureIncompat64bit       = uint32(0x0080)
+	SbeFeatureIncompatMmp         = uint32(0x0100)
+	SbeFeatureIncompatFlexBg      = uint32(0x0200)
+)
+
+var (
+	SbeFeatureIncompatNames = []string{
+		"64bit",
+		"Compression",
+		"Extents",
+		"Filetype",
+		"FlexBg",
+		"JournalDev",
+		"MetaBg",
+		"Mmp",
+		"Recover",
+	}
+
+	SbeFeatureIncompatLookup = map[string]uint32{
+		"Compression": SbeFeatureIncompatCompression,
+		"Filetype":    SbeFeatureIncompatFiletype,
+		"Recover":     SbeFeatureIncompatRecover,
+		"JournalDev":  SbeFeatureIncompatJournalDev,
+		"MetaBg":      SbeFeatureIncompatMetaBg,
+		"Extents":     SbeFeatureIncompatExtents,
+		"64bit":       SbeFeatureIncompat64bit,
+		"Mmp":         SbeFeatureIncompatMmp,
+		"FlexBg":      SbeFeatureIncompatFlexBg,
+	}
+)
 
 // SuperblockExtension available if `SRevLevel` == `SB_REVLEVEL_V2_DYNAMIC_INODES`.
 type SuperblockExtension struct {
@@ -174,12 +243,42 @@ func (sbe *SuperblockExtension) HasCompatibleFeature(mask uint32) bool {
 	return (sbe.SFeatureCompat & mask) > 0
 }
 
+func (sbe *SuperblockExtension) HasReadonlyCompatibleFeature(mask uint32) bool {
+	return (sbe.SFeatureRoCompat & mask) > 0
+}
+
 func (sbe *SuperblockExtension) HasIncompatibleFeature(mask uint32) bool {
 	return (sbe.SFeatureIncompat & mask) > 0
 }
 
-func (sbe *SuperblockExtension) HasReadonlyCompatibleFeature(mask uint32) bool {
-	return (sbe.SFeatureRoCompat & mask) > 0
+func (sbe *SuperblockExtension) Dump() {
+	fmt.Printf("Feature (Compatible)\n")
+	fmt.Printf("\n")
+
+	for _, name := range SbeFeatureCompatNames {
+		bit := SbeFeatureCompatLookup[name]
+		fmt.Printf("  %15s (0x%02x): %v\n", name, bit, sbe.HasCompatibleFeature(bit))
+	}
+
+	fmt.Printf("\n")
+
+	fmt.Printf("Feature (Read-Only Compatible)\n")
+	fmt.Printf("\n")
+
+	for _, name := range SbeFeatureRoCompatNames {
+		bit := SbeFeatureRoCompatLookup[name]
+		fmt.Printf("  %15s (0x%02x): %v\n", name, bit, sbe.HasReadonlyCompatibleFeature(bit))
+	}
+
+	fmt.Printf("\n")
+
+	fmt.Printf("Feature (Incompatible)\n")
+	fmt.Printf("\n")
+
+	for _, name := range SbeFeatureIncompatNames {
+		bit := SbeFeatureIncompatLookup[name]
+		fmt.Printf("  %15s (0x%02x): %v\n", name, bit, sbe.HasIncompatibleFeature(bit))
+	}
 }
 
 func ParseSuperblock(r io.Reader) (sb *Superblock, sbe *SuperblockExtension, err error) {
@@ -199,7 +298,7 @@ func ParseSuperblock(r io.Reader) (sb *Superblock, sbe *SuperblockExtension, err
 		log.Panic(ErrNotExt4)
 	}
 
-	if sb.SRevLevel != SB_REVLEVEL_DYNAMIC_REV {
+	if sb.SRevLevel != SbRevlevelDynamicRev {
 		return sb, nil, nil
 	}
 

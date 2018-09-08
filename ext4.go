@@ -18,5 +18,7 @@ func Parse(rs io.ReadSeeker) (err error) {
 	sb = sb
 	esb = esb
 
+	esb.Dump()
+
 	return nil
 }

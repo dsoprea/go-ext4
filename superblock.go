@@ -26,28 +26,65 @@ var (
 )
 
 const (
-	SbStateCleanlyUnmounted      = 0x1
-	SbStateErrorsDetected        = 0x2
-	SbStateOrphansBeingRecovered = 0x4
+	SbStateCleanlyUnmounted      = 0x0001
+	SbStateErrorsDetected        = 0x0002
+	SbStateOrphansBeingRecovered = 0x0004
 )
 
 const (
-	SbErrorsContinue        = 0x1
-	SbErrorsRemountReadonly = 0x2
-	SbErrorsPanic           = 0x3
+	SbErrorsContinue        = 1
+	SbErrorsRemountReadonly = 2
+	SbErrorsPanic           = 3
 )
 
 const (
-	SbOsLinux   = 0x0
-	SbOsHurd    = 0x1
-	SbOsMasix   = 0x2
-	SbOsFreebsd = 0x3
-	SbOsLites   = 0x4
+	SbOsLinux   = 0
+	SbOsHurd    = 1
+	SbOsMasix   = 2
+	SbOsFreebsd = 3
+	SbOsLites   = 4
 )
 
 const (
-	SbRevlevelGoodOldRev = 0x0
-	SbRevlevelDynamicRev = 0x1
+	SbRevlevelGoodOldRev = 0
+	SbRevlevelDynamicRev = 1
+)
+
+const (
+	SbDefHashVersionLegacy          = 0x0
+	SbDefHashVersionHalfMd4         = 0x1
+	SbDefHashVersionTea             = 0x2
+	SbDefHashVersionLegacyUnsigned  = 0x3
+	SbDefHashVersionHalfMd4Unsigned = 0x4
+	SbDefHashVersionTeaUnsigned     = 0x5
+)
+
+const (
+	SbMountOptionDebug         = uint32(0x001)
+	SbMountOptionBsdGroups     = uint32(0x002)
+	SbMountOptionXattrUser     = uint32(0x004)
+	SbMountOptionAcl           = uint32(0x008)
+	SbMountOptionUid16         = uint32(0x010)
+	SbMountOptionJmodeData     = uint32(0x020)
+	SbMountOptionJmodeOrdered  = uint32(0x040)
+	SbMountOptionJmodeWback    = uint32(0x060)
+	SbMountOptionNoBarrier     = uint32(0x100)
+	SbMountOptionBlockValidity = uint32(0x200)
+	SbMountOptionDiscard       = uint32(0x400)
+	SbMountOptionNoDelAlloc    = uint32(0x800)
+)
+
+const (
+	SbFlagSignedDirectoryHash   = uint32(0x1)
+	SbFlagUnsignedDirectoryHash = uint32(0x2)
+	SbFlagTestDevelopmentCode   = uint32(0x4)
+)
+
+const (
+	SbEncryptAlgoInvalid   = uint8(0)
+	SbEncryptAlgoAes256Xt  = uint8(1)
+	SbEncryptAlgoAes256Gcm = uint8(2)
+	SbEncryptAlgoAes256Cbc = uint8(3)
 )
 
 type Superblock struct {
@@ -313,101 +350,230 @@ func (sb *Superblock) Dump() {
 }
 
 const (
-	SbFeatureCompatDirPrealloc  = uint32(0x0001)
+	// COMPAT_DIR_PREALLOC
+	SbFeatureCompatDirPrealloc = uint32(0x0001)
+
+	// COMPAT_IMAGIC_INODES
 	SbFeatureCompatImagicInodes = uint32(0x0002)
-	SbFeatureCompatHasJournal   = uint32(0x0004)
-	SbFeatureCompatExtAttr      = uint32(0x0008)
-	SbFeatureCompatResizeInode  = uint32(0x0010)
-	SbFeatureCompatDirIndex     = uint32(0x0020)
+
+	// COMPAT_HAS_JOURNAL
+	SbFeatureCompatHasJournal = uint32(0x0004)
+
+	// COMPAT_EXT_ATTR
+	SbFeatureCompatExtAttr = uint32(0x0008)
+
+	// COMPAT_RESIZE_INODE
+	SbFeatureCompatResizeInode = uint32(0x0010)
+
+	// COMPAT_DIR_INDEX
+	SbFeatureCompatDirIndex = uint32(0x0020)
+
+	// COMPAT_LAZY_BG
+	SbFeatureCompatLazyBg = uint32(0x40)
+
+	// COMPAT_EXCLUDE_INODE
+	SbFeatureCompatExcludeInode = uint32(0x80)
+
+	// COMPAT_EXCLUDE_BITMAP
+	SbFeatureCompatExcludeBitmap = uint32(0x100)
+
+	// COMPAT_SPARSE_SUPER2
+	SbFeatureCompatSparseSuperblockV2 = uint32(0x200)
 )
 
 var (
+	// SbFeatureCompatNames is an ordered list of names.
 	SbFeatureCompatNames = []string{
 		"DirIndex",
 		"DirPrealloc",
+		"ExcludeBitmap",
+		"ExcludeInode",
 		"ExtAttr",
 		"HasJournal",
 		"ImagicInodes",
+		"LazyBg",
 		"ResizeInode",
+		"SparseSuper2",
 	}
 
 	SbFeatureCompatLookup = map[string]uint32{
-		"DirPrealloc":  SbFeatureCompatDirPrealloc,
-		"ImagicInodes": SbFeatureCompatImagicInodes,
-		"HasJournal":   SbFeatureCompatHasJournal,
-		"ExtAttr":      SbFeatureCompatExtAttr,
-		"ResizeInode":  SbFeatureCompatResizeInode,
-		"DirIndex":     SbFeatureCompatDirIndex,
+		"DirPrealloc":   SbFeatureCompatDirPrealloc,
+		"ImagicInodes":  SbFeatureCompatImagicInodes,
+		"HasJournal":    SbFeatureCompatHasJournal,
+		"ExtAttr":       SbFeatureCompatExtAttr,
+		"ResizeInode":   SbFeatureCompatResizeInode,
+		"DirIndex":      SbFeatureCompatDirIndex,
+		"LazyBg":        SbFeatureCompatLazyBg,
+		"ExcludeInode":  SbFeatureCompatExcludeInode,
+		"ExcludeBitmap": SbFeatureCompatExcludeBitmap,
+		"SparseSuper2":  SbFeatureCompatSparseSuperblockV2,
 	}
 )
 
 const (
-	SbFeatureRoCompatSparseSuper = uint32(0x0001)
-	SbFeatureRoCompatLargeFile   = uint32(0x0002)
-	SbFeatureRoCompatBtreeDir    = uint32(0x0004)
-	SbFeatureRoCompatHugeFile    = uint32(0x0008)
-	SbFeatureRoCompatGdtCsum     = uint32(0x0010)
-	SbFeatureRoCompatDirNlink    = uint32(0x0020)
-	SbFeatureRoCompatExtraIsize  = uint32(0x0040)
+	// RO_COMPAT_SPARSE_SUPER
+	SbFeatureRoCompatSparseSuper = uint32(0x1)
+
+	// RO_COMPAT_LARGE_FILE
+	SbFeatureRoCompatLargeFile = uint32(0x2)
+
+	// RO_COMPAT_BTREE_DIR
+	SbFeatureRoCompatBtreeDir = uint32(0x4)
+
+	// RO_COMPAT_HUGE_FILE
+	SbFeatureRoCompatHugeFile = uint32(0x8)
+
+	// RO_COMPAT_GDT_CSUM
+	SbFeatureRoCompatGdtCsum = uint32(0x10)
+
+	// RO_COMPAT_DIR_NLINK
+	SbFeatureRoCompatDirNlink = uint32(0x20)
+
+	// RO_COMPAT_EXTRA_ISIZE
+	SbFeatureRoCompatExtraIsize = uint32(0x40)
+
+	// RO_COMPAT_HAS_SNAPSHOT
+	SbFeatureRoCompatHasSnapshot = uint32(0x80)
+
+	// RO_COMPAT_QUOTA
+	SbFeatureRoCompatQuota = uint32(0x100)
+
+	// RO_COMPAT_BIGALLOC
+	SbFeatureRoCompatBigAlloc = uint32(0x200)
+
+	// RO_COMPAT_METADATA_CSUM
+	SbFeatureRoCompatMetadataCsum = uint32(0x400)
+
+	// RO_COMPAT_REPLICA
+	SbFeatureRoCompatReplica = uint32(0x800)
+
+	// RO_COMPAT_READONLY
+	SbFeatureRoCompatReadonly = uint32(0x1000)
+
+	// RO_COMPAT_PROJECT
+	SbFeatureRoCompatProject = uint32(0x2000)
 )
 
 var (
+	// SbFeatureRoCompatNames is an ordered list of names.
 	SbFeatureRoCompatNames = []string{
+		"BigAlloc",
 		"BtreeDir",
 		"DirNlink",
 		"ExtraIsize",
 		"GdtCsum",
+		"HasSnapshot",
 		"HugeFile",
 		"LargeFile",
+		"MetadataCsum",
+		"Project",
+		"Quota",
+		"Readonly",
+		"Replica",
 		"SparseSuper",
 	}
 
 	SbFeatureRoCompatLookup = map[string]uint32{
-		"SparseSuper": SbFeatureRoCompatSparseSuper,
-		"LargeFile":   SbFeatureRoCompatLargeFile,
-		"BtreeDir":    SbFeatureRoCompatBtreeDir,
-		"HugeFile":    SbFeatureRoCompatHugeFile,
-		"GdtCsum":     SbFeatureRoCompatGdtCsum,
-		"DirNlink":    SbFeatureRoCompatDirNlink,
-		"ExtraIsize":  SbFeatureRoCompatExtraIsize,
+		"SparseSuper":  SbFeatureRoCompatSparseSuper,
+		"LargeFile":    SbFeatureRoCompatLargeFile,
+		"BtreeDir":     SbFeatureRoCompatBtreeDir,
+		"HugeFile":     SbFeatureRoCompatHugeFile,
+		"GdtCsum":      SbFeatureRoCompatGdtCsum,
+		"DirNlink":     SbFeatureRoCompatDirNlink,
+		"ExtraIsize":   SbFeatureRoCompatExtraIsize,
+		"HasSnapshot":  SbFeatureRoCompatHasSnapshot,
+		"Quota":        SbFeatureRoCompatQuota,
+		"BigAlloc":     SbFeatureRoCompatBigAlloc,
+		"MetadataCsum": SbFeatureRoCompatMetadataCsum,
+		"Replica":      SbFeatureRoCompatReplica,
+		"Readonly":     SbFeatureRoCompatReadonly,
+		"Project":      SbFeatureRoCompatProject,
 	}
 )
 
 const (
+	// INCOMPAT_COMPRESSION
 	SbFeatureIncompatCompression = uint32(0x0001)
-	SbFeatureIncompatFiletype    = uint32(0x0002)
-	SbFeatureIncompatRecover     = uint32(0x0004) /* Needs recovery */
-	SbFeatureIncompatJournalDev  = uint32(0x0008) /* Journal device */
-	SbFeatureIncompatMetaBg      = uint32(0x0010)
-	SbFeatureIncompatExtents     = uint32(0x0040) /* extents support */
-	SbFeatureIncompat64bit       = uint32(0x0080)
-	SbFeatureIncompatMmp         = uint32(0x0100)
-	SbFeatureIncompatFlexBg      = uint32(0x0200)
+
+	// INCOMPAT_FILETYPE
+	SbFeatureIncompatFiletype = uint32(0x0002)
+
+	// INCOMPAT_RECOVER
+	SbFeatureIncompatRecover = uint32(0x0004) /* Needs recovery */
+
+	// INCOMPAT_JOURNAL_DEV
+	SbFeatureIncompatJournalDev = uint32(0x0008) /* Journal device */
+
+	// INCOMPAT_META_BG
+	SbFeatureIncompatMetaBg = uint32(0x0010)
+
+	// INCOMPAT_EXTENTS
+	SbFeatureIncompatExtents = uint32(0x0040) /* extents support */
+
+	// INCOMPAT_64BIT
+	SbFeatureIncompat64bit = uint32(0x0080)
+
+	// INCOMPAT_MMP
+	SbFeatureIncompatMmp = uint32(0x0100)
+
+	// INCOMPAT_FLEX_BG
+	SbFeatureIncompatFlexBg = uint32(0x0200)
+
+	// INCOMPAT_EA_INODE
+	SbFeatureIncompatLargeExtendedAttributeValues = uint32(0x400)
+
+	// INCOMPAT_DIRDATA
+	SbFeatureIncompatDirData = uint32(0x1000)
+
+	// INCOMPAT_CSUM_SEED
+	SbFeatureIncompatCsumSeed = uint32(0x2000)
+
+	// INCOMPAT_LARGEDIR
+	SbFeatureIncompatLargeDir = uint32(0x4000)
+
+	// INCOMPAT_INLINE_DATA
+	SbFeatureIncompatInlineData = uint32(0x8000)
+
+	// INCOMPAT_ENCRYPT
+	SbFeatureIncompatEncrypt = uint32(0x10000)
 )
 
 var (
+	// SbFeatureIncompatNames is an ordered list of names.
 	SbFeatureIncompatNames = []string{
 		"64bit",
 		"Compression",
+		"CsumSeed",
+		"DirData",
+		"Encrypt",
 		"Extents",
 		"Filetype",
 		"FlexBg",
+		"InlineData",
 		"JournalDev",
+		"LargeDir",
+		"LargeExtendedAttributeValues",
 		"MetaBg",
 		"Mmp",
 		"Recover",
 	}
 
 	SbFeatureIncompatLookup = map[string]uint32{
-		"Compression": SbFeatureIncompatCompression,
-		"Filetype":    SbFeatureIncompatFiletype,
-		"Recover":     SbFeatureIncompatRecover,
-		"JournalDev":  SbFeatureIncompatJournalDev,
-		"MetaBg":      SbFeatureIncompatMetaBg,
-		"Extents":     SbFeatureIncompatExtents,
-		"64bit":       SbFeatureIncompat64bit,
-		"Mmp":         SbFeatureIncompatMmp,
-		"FlexBg":      SbFeatureIncompatFlexBg,
+		"Compression":                  SbFeatureIncompatCompression,
+		"Filetype":                     SbFeatureIncompatFiletype,
+		"Recover":                      SbFeatureIncompatRecover,
+		"JournalDev":                   SbFeatureIncompatJournalDev,
+		"MetaBg":                       SbFeatureIncompatMetaBg,
+		"Extents":                      SbFeatureIncompatExtents,
+		"64bit":                        SbFeatureIncompat64bit,
+		"Mmp":                          SbFeatureIncompatMmp,
+		"FlexBg":                       SbFeatureIncompatFlexBg,
+		"LargeExtendedAttributeValues": SbFeatureIncompatLargeExtendedAttributeValues,
+		"DirData":                      SbFeatureIncompatDirData,
+		"CsumSeed":                     SbFeatureIncompatCsumSeed,
+		"LargeDir":                     SbFeatureIncompatLargeDir,
+		"InlineData":                   SbFeatureIncompatInlineData,
+		"Encrypt":                      SbFeatureIncompatEncrypt,
 	}
 )
 

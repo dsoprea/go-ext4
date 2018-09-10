@@ -13,7 +13,9 @@ func ParseHead(rs io.ReadSeeker) (err error) {
 	log.PanicIf(err)
 
 	// TODO(dustin): !! Add more. Not very useful, yet.
-	ep = ep
+
+	ep.Superblock().Dump()
+	ep.BlockGroupDescriptor().Dump()
 
 	return nil
 }

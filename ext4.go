@@ -6,19 +6,14 @@ import (
 	"github.com/dsoprea/go-logging"
 )
 
-// Parse parses the whole filesystem.
-func Parse(rs io.ReadSeeker) (err error) {
-	_, err = rs.Seek(Superblock0Offset, io.SeekStart)
-	log.PanicIf(err)
-
-	sb, esb, err := ParseSuperblock(rs)
+// ParseHead parses the first superblock and the first block group descriptor.
+// Everything after that needs needs seeking and needs integrity.
+func ParseHead(rs io.ReadSeeker) (err error) {
+	ep, err := NewExt4ParserFromReadSeeker(rs, true)
 	log.PanicIf(err)
 
 	// TODO(dustin): !! Add more. Not very useful, yet.
-	sb = sb
-	esb = esb
-
-	esb.Dump()
+	ep = ep
 
 	return nil
 }

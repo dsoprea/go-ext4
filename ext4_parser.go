@@ -1,5 +1,7 @@
 package ext4
 
+// TODO(dustin): !! We don't yet see a lot of value for this. We might remove it in the future.
+
 import (
 	"io"
 
@@ -21,11 +23,15 @@ func (ep *Ext4Parser) BlockGroupDescriptor() *BlockGroupDescriptor {
 	return ep.bgd
 }
 
-func (ep *Ext4Parser) BlockOffset(n uint32) int64 {
-	return int64(ep.blockSize * n)
+func (ep *Ext4Parser) BlockOffset(n uint64) uint64 {
+	if ep.blockSize == 1024 {
+		n++
+	}
+
+	return uint64(ep.blockSize) * n
 }
 
-func (ep *Ext4Parser) SeekToBlock(rs io.ReadSeeker, n uint32) (err error) {
+func (ep *Ext4Parser) SeekToBlock(rs io.ReadSeeker, n uint64) (err error) {
 	defer func() {
 		if state := recover(); state != nil {
 			err := log.Wrap(state.(error))
@@ -35,7 +41,7 @@ func (ep *Ext4Parser) SeekToBlock(rs io.ReadSeeker, n uint32) (err error) {
 
 	offset := ep.BlockOffset(n)
 
-	_, err = rs.Seek(offset, io.SeekStart)
+	_, err = rs.Seek(int64(offset), io.SeekStart)
 	log.PanicIf(err)
 
 	return nil
@@ -56,7 +62,7 @@ func NewExt4ParserFromReadSeeker(rs io.ReadSeeker, isFirst bool) (ep *Ext4Parser
 		log.PanicIf(err)
 	}
 
-	sb, err := ParseSuperblock(rs)
+	sb, err := NewSuperblockWithReader(rs)
 	log.PanicIf(err)
 
 	blockSize := sb.BlockSize()
@@ -73,7 +79,7 @@ func NewExt4ParserFromReadSeeker(rs io.ReadSeeker, isFirst bool) (ep *Ext4Parser
 		log.PanicIf(err)
 	}
 
-	bgd, err := ParseBlockGroupDescriptor(rs)
+	bgd, err := NewBlockGroupDescriptorWithReader(rs, sb)
 	log.PanicIf(err)
 
 	ep.bgd = bgd

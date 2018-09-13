@@ -20,7 +20,7 @@ const (
 	BgdFlagInodeTableZeroed                  = uint16(0x4)
 )
 
-type BlockGroupDescriptor struct {
+type BlockGroupDescriptorData struct {
 	BgBlockBitmapLo     uint32 /* Blocks bitmap block */
 	BgInodeBitmapLo     uint32 /* Inodes bitmap block */
 	BgInodeTableLo      uint32 /* Inodes table block */
@@ -46,41 +46,12 @@ type BlockGroupDescriptor struct {
 	BgReserved2         uint32 /* Padding to 64 bytes. */
 }
 
-func (bgd *BlockGroupDescriptor) Dump() {
-	fmt.Printf("BgBlockBitmapHi: (%d)\n", bgd.BgBlockBitmapHi)
-	fmt.Printf("BgBlockBitmapLo: (%d)\n", bgd.BgBlockBitmapLo)
-	fmt.Printf("BgChecksum: [%04x]\n", bgd.BgChecksum)
-	fmt.Printf("BgFlags: (%s)\n", strconv.FormatInt(int64(bgd.BgFlags), 2))
-	fmt.Printf("BgFreeBlocksCountHi: (%d)\n", bgd.BgFreeBlocksCountHi)
-	fmt.Printf("BgFreeBlocksCountLo: (%d)\n", bgd.BgFreeBlocksCountLo)
-	fmt.Printf("BgFreeInodesCountHi: (%d)\n", bgd.BgFreeInodesCountHi)
-	fmt.Printf("BgFreeInodesCountLo: (%d)\n", bgd.BgFreeInodesCountLo)
-	fmt.Printf("BgInodeBitmapHi: (%d)\n", bgd.BgInodeBitmapHi)
-	fmt.Printf("BgInodeBitmapLo: (%d)\n", bgd.BgInodeBitmapLo)
-	fmt.Printf("BgInodeTableHi: (%d)\n", bgd.BgInodeTableHi)
-	fmt.Printf("BgInodeTableLo: (%d)\n", bgd.BgInodeTableLo)
-	fmt.Printf("BgItableUnusedHi: (%d)\n", bgd.BgItableUnusedHi)
-	fmt.Printf("BgItableUnusedLo: (%d)\n", bgd.BgItableUnusedLo)
-	fmt.Printf("BgUsedDirsCountHi: (%d)\n", bgd.BgUsedDirsCountHi)
-	fmt.Printf("BgUsedDirsCountLo: (%d)\n", bgd.BgUsedDirsCountLo)
-	fmt.Printf("BgExcludeBitmapHi: (%d)\n", bgd.BgExcludeBitmapHi)
-	fmt.Printf("BgBlockBitmapCsumHi: (%d)\n", bgd.BgBlockBitmapCsumHi)
-	fmt.Printf("BgInodeBitmapCsumHi: (%d)\n", bgd.BgInodeBitmapCsumHi)
+type BlockGroupDescriptor struct {
+	data *BlockGroupDescriptorData
+	sb   *Superblock
 }
 
-func (bgd *BlockGroupDescriptor) IsInodeTableAndBitmapNotInitialized() bool {
-	return (bgd.BgFlags & BgdFlagInodeTableAndBitmapNotInitialized) > 0
-}
-
-func (bgd *BlockGroupDescriptor) IsBitmapNotInitialized() bool {
-	return (bgd.BgFlags & BgdFlagBitmapNotInitialized) > 0
-}
-
-func (bgd *BlockGroupDescriptor) IsInodeTableZeroed() bool {
-	return (bgd.BgFlags & BgdFlagInodeTableZeroed) > 0
-}
-
-func ParseBlockGroupDescriptor(r io.Reader) (bgd *BlockGroupDescriptor, err error) {
+func NewBlockGroupDescriptorWithReader(r io.Reader, sb *Superblock) (bgd *BlockGroupDescriptor, err error) {
 	defer func() {
 		if state := recover(); state != nil {
 			err := log.Wrap(state.(error))
@@ -88,10 +59,68 @@ func ParseBlockGroupDescriptor(r io.Reader) (bgd *BlockGroupDescriptor, err erro
 		}
 	}()
 
-	bgd = new(BlockGroupDescriptor)
+	bgdd := new(BlockGroupDescriptorData)
 
-	err = binary.Read(r, binary.LittleEndian, bgd)
+	err = binary.Read(r, binary.LittleEndian, bgdd)
 	log.PanicIf(err)
 
+	bgd = &BlockGroupDescriptor{
+		data: bgdd,
+		sb:   sb,
+	}
+
 	return bgd, nil
+}
+
+func (bgd *BlockGroupDescriptor) Data() *BlockGroupDescriptorData {
+	return bgd.data
+}
+
+func (bgd *BlockGroupDescriptor) Superblock() *Superblock {
+	return bgd.sb
+}
+
+func (bgd *BlockGroupDescriptor) Dump() {
+	fmt.Printf("BgBlockBitmapHi: (%d)\n", bgd.data.BgBlockBitmapHi)
+	fmt.Printf("BgBlockBitmapLo: (%d)\n", bgd.data.BgBlockBitmapLo)
+	fmt.Printf("BgChecksum: [%04x]\n", bgd.data.BgChecksum)
+	fmt.Printf("BgFlags: (%s)\n", strconv.FormatInt(int64(bgd.data.BgFlags), 2))
+	fmt.Printf("BgFreeBlocksCountHi: (%d)\n", bgd.data.BgFreeBlocksCountHi)
+	fmt.Printf("BgFreeBlocksCountLo: (%d)\n", bgd.data.BgFreeBlocksCountLo)
+	fmt.Printf("BgFreeInodesCountHi: (%d)\n", bgd.data.BgFreeInodesCountHi)
+	fmt.Printf("BgFreeInodesCountLo: (%d)\n", bgd.data.BgFreeInodesCountLo)
+	fmt.Printf("BgInodeBitmapHi: (%d)\n", bgd.data.BgInodeBitmapHi)
+	fmt.Printf("BgInodeBitmapLo: (%d)\n", bgd.data.BgInodeBitmapLo)
+	fmt.Printf("BgInodeTableHi: (%d)\n", bgd.data.BgInodeTableHi)
+	fmt.Printf("BgInodeTableLo: (%d)\n", bgd.data.BgInodeTableLo)
+	fmt.Printf("BgItableUnusedHi: (%d)\n", bgd.data.BgItableUnusedHi)
+	fmt.Printf("BgItableUnusedLo: (%d)\n", bgd.data.BgItableUnusedLo)
+	fmt.Printf("BgUsedDirsCountHi: (%d)\n", bgd.data.BgUsedDirsCountHi)
+	fmt.Printf("BgUsedDirsCountLo: (%d)\n", bgd.data.BgUsedDirsCountLo)
+	fmt.Printf("BgExcludeBitmapHi: (%d)\n", bgd.data.BgExcludeBitmapHi)
+	fmt.Printf("BgBlockBitmapCsumHi: (%d)\n", bgd.data.BgBlockBitmapCsumHi)
+	fmt.Printf("BgInodeBitmapCsumHi: (%d)\n", bgd.data.BgInodeBitmapCsumHi)
+
+	fmt.Printf("InodeTableBlock: (%d)\n", bgd.InodeTableBlock())
+}
+
+func (bgd *BlockGroupDescriptor) IsInodeTableAndBitmapNotInitialized() bool {
+	return (bgd.data.BgFlags & BgdFlagInodeTableAndBitmapNotInitialized) > 0
+}
+
+func (bgd *BlockGroupDescriptor) IsBitmapNotInitialized() bool {
+	return (bgd.data.BgFlags & BgdFlagBitmapNotInitialized) > 0
+}
+
+func (bgd *BlockGroupDescriptor) IsInodeTableZeroed() bool {
+	return (bgd.data.BgFlags & BgdFlagInodeTableZeroed) > 0
+}
+
+// InodeTableBlock returns the absolute block number of the inode-table.
+func (bgd *BlockGroupDescriptor) InodeTableBlock() uint64 {
+	return uint64(bgd.data.BgInodeTableHi<<32) | uint64(bgd.data.BgInodeTableLo)
+}
+
+func (bgd *BlockGroupDescriptor) InodeBitmapBlock() uint64 {
+	return uint64(bgd.data.BgInodeBitmapHi<<32) | uint64(bgd.data.BgInodeBitmapLo)
 }

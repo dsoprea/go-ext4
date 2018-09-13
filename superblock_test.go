@@ -9,7 +9,7 @@ import (
 	"github.com/dsoprea/go-logging"
 )
 
-func TestParseSuperblock(t *testing.T) {
+func TestNewSuperblockWithReader(t *testing.T) {
 	filepath := path.Join(assetsPath, "tiny.ext4")
 
 	f, err := os.Open(filepath)
@@ -24,7 +24,7 @@ func TestParseSuperblock(t *testing.T) {
 	originalPosition, err := f.Seek(0, io.SeekCurrent)
 	log.PanicIf(err)
 
-	sb, err := ParseSuperblock(f)
+	sb, err := NewSuperblockWithReader(f)
 	log.PanicIf(err)
 
 	currentPosition, err := f.Seek(0, io.SeekCurrent)
@@ -36,21 +36,21 @@ func TestParseSuperblock(t *testing.T) {
 		t.Fatalf("Superblock parse did not consume the right amount of data: (%d) != (%d)", actualConsumedBytes, SuperblockSize)
 	}
 
-	if sb.SInodesCount != 128 {
+	if sb.Data().SInodesCount != 128 {
 		t.Fatalf("SInodesCount not correct.")
-	} else if sb.SBlocksCountLo != 1024 {
+	} else if sb.Data().SBlocksCountLo != 1024 {
 		t.Fatalf("SBlocksCountLo not correct.")
-	} else if sb.SLogBlockSize != 0 {
+	} else if sb.Data().SLogBlockSize != 0 {
 		t.Fatalf("SLogBlockSize not correct.")
 	}
 
-	if sb.SVolumeName != [16]byte{'t', 'i', 'n', 'y', 'i', 'm', 'a', 'g', 'e', 0, 0, 0, 0, 0, 0, 0} {
+	if sb.Data().SVolumeName != [16]byte{'t', 'i', 'n', 'y', 'i', 'm', 'a', 'g', 'e', 0, 0, 0, 0, 0, 0, 0} {
 		t.Fatalf("SVolumeName not correct.")
-	} else if sb.SUuid != [16]byte{0x99, 0x05, 0xd1, 0xc3, 0x34, 0x5a, 0x4d, 0xeb, 0x82, 0xb2, 0x49, 0x92, 0xf3, 0xf5, 0x46, 0xcc} {
+	} else if sb.Data().SUuid != [16]byte{0x99, 0x05, 0xd1, 0xc3, 0x34, 0x5a, 0x4d, 0xeb, 0x82, 0xb2, 0x49, 0x92, 0xf3, 0xf5, 0x46, 0xcc} {
 		t.Fatalf("SUuid not correct.")
-	} else if sb.SMkfsTime != 1536385726 {
+	} else if sb.Data().SMkfsTime != 1536385726 {
 		t.Fatalf("SMkfsTime not correct.")
-	} else if sb.SHashSeed != [4]uint32{0x36b23193, 0x8241e711, 0x56e1ab9, 0x8cb728de} {
+	} else if sb.Data().SHashSeed != [4]uint32{0x36b23193, 0x8241e711, 0x56e1ab9, 0x8cb728de} {
 		t.Fatalf("SHashSeed not correct.")
 	}
 }

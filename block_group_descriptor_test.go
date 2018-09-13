@@ -9,7 +9,7 @@ import (
 	"github.com/dsoprea/go-logging"
 )
 
-func TestParseBlockGroupDescriptor(t *testing.T) {
+func TestNewBlockGroupDescriptorWithReader(t *testing.T) {
 	filepath := path.Join(assetsPath, "tiny.ext4")
 
 	f, err := os.Open(filepath)
@@ -20,15 +20,15 @@ func TestParseBlockGroupDescriptor(t *testing.T) {
 	_, err = f.Seek(Superblock0Offset, io.SeekStart)
 	log.PanicIf(err)
 
-	sb, err := ParseSuperblock(f)
+	sb, err := NewSuperblockWithReader(f)
 	log.PanicIf(err)
 
-	bgdOffset := int64(sb.BlockSize() * (sb.SFirstDataBlock + 1))
+	bgdOffset := int64(sb.BlockSize() * (sb.Data().SFirstDataBlock + 1))
 
 	_, err = f.Seek(bgdOffset, io.SeekStart)
 	log.PanicIf(err)
 
-	bgd, err := ParseBlockGroupDescriptor(f)
+	bgd, err := NewBlockGroupDescriptorWithReader(f, sb)
 	log.PanicIf(err)
 
 	currentPosition, err := f.Seek(0, io.SeekCurrent)
@@ -40,7 +40,7 @@ func TestParseBlockGroupDescriptor(t *testing.T) {
 		t.Fatalf("BGD parse did not consume the right amount of data: (%d) != (%d)", actualConsumedBytes, BlockGroupDescriptorSize)
 	}
 
-	if bgd.BgChecksum != 0xeeda {
+	if bgd.Data().BgChecksum != 0xeeda {
 		t.Fatalf("Checksum not correct.")
 	}
 }

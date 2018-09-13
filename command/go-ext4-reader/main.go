@@ -26,7 +26,7 @@ func main() {
 
 	defer f.Close()
 
-	err = ext4.ParseHead(f)
+	err = ext4.NewExt4WithReadSeeker(f)
 	log.PanicIf(err)
 
 	// TODO(dustin): !! Add more once we implement more.

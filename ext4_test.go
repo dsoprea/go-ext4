@@ -8,7 +8,7 @@ import (
 	"github.com/dsoprea/go-logging"
 )
 
-func TestParse(t *testing.T) {
+func TestNewWithReadSeeker(t *testing.T) {
 	filepath := path.Join(assetsPath, "tiny.ext4")
 
 	f, err := os.Open(filepath)
@@ -16,6 +16,6 @@ func TestParse(t *testing.T) {
 
 	defer f.Close()
 
-	err = ParseHead(f)
+	err = NewExt4WithReadSeeker(f)
 	log.PanicIf(err)
 }

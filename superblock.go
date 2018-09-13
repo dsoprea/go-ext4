@@ -87,7 +87,7 @@ const (
 	SbEncryptAlgoAes256Cbc = uint8(3)
 )
 
-type Superblock struct {
+type SuperblockData struct {
 	// See fs/ext4/ext4.h .
 
 	// 0x00
@@ -184,7 +184,7 @@ type Superblock struct {
 	SHashSeed       [4]uint32 /* HTREE hash seed */
 	SDefHashVersion uint8     /* Default hash version to use */
 	SJnlBackupType  uint8
-	SDescSize       uint16 /* size of group descriptor */
+	SDescSize       uint16 /* Size of group descriptors, in bytes, if the 64bit incompat feature flag is set. */
 
 	// 0x100
 	SDefaultMountOpts uint32
@@ -252,78 +252,167 @@ type Superblock struct {
 	SChecksum         int32      /* crc32c(superblock) */
 }
 
+type Superblock struct {
+	data      *SuperblockData
+	blockSize uint32
+}
+
+func (sb *Superblock) Data() *SuperblockData {
+	return sb.data
+}
+
+func NewSuperblockWithReader(r io.Reader) (sb *Superblock, err error) {
+	defer func() {
+		if state := recover(); state != nil {
+			err := log.Wrap(state.(error))
+			log.Panic(err)
+		}
+	}()
+
+	sbd := new(SuperblockData)
+
+	err = binary.Read(r, binary.LittleEndian, sbd)
+	log.PanicIf(err)
+
+	if sbd.SMagic != Ext4Magic {
+		log.Panic(ErrNotExt4)
+	}
+
+	blockSize := uint32(math.Pow(2, (10 + float64(sbd.SLogBlockSize))))
+
+	sb = &Superblock{
+		data:      sbd,
+		blockSize: blockSize,
+	}
+
+	if sb.HasIncompatibleFeature(SbFeatureIncompatMetaBg) == true {
+		log.Panicf("meta_bg not supported")
+	}
+
+	if sb.HasIncompatibleFeature(SbFeatureIncompatFlexBg) == false {
+		log.Panicf("only filesystems with flex_bg are supported")
+	}
+
+	// TODO(dustin): !! Finish checking flags against our capabilities.
+
+	return sb, nil
+}
+
 func (sb *Superblock) HasExtended() bool {
-	return sb.SRevLevel >= SbRevlevelDynamicRev
+	return sb.data.SRevLevel >= SbRevlevelDynamicRev
 }
 
 func (sb *Superblock) BlockSize() uint32 {
-	return uint32(math.Pow(2, (10 + float64(sb.SLogBlockSize))))
+	return sb.blockSize
 }
 
 func (sb *Superblock) MountTime() time.Time {
-	return time.Unix(int64(sb.SMtime), 0)
+	return time.Unix(int64(sb.data.SMtime), 0)
 }
 
 func (sb *Superblock) WriteTime() time.Time {
-	return time.Unix(int64(sb.SWtime), 0)
+	return time.Unix(int64(sb.data.SWtime), 0)
 }
 
 func (sb *Superblock) LastCheckTime() time.Time {
-	return time.Unix(int64(sb.SLastcheck), 0)
+	return time.Unix(int64(sb.data.SLastcheck), 0)
 }
 
 func (sb *Superblock) HasCompatibleFeature(mask uint32) bool {
-	return (sb.SFeatureCompat & mask) > 0
+	return (sb.data.SFeatureCompat & mask) > 0
 }
 
 func (sb *Superblock) HasReadonlyCompatibleFeature(mask uint32) bool {
-	return (sb.SFeatureRoCompat & mask) > 0
+	return (sb.data.SFeatureRoCompat & mask) > 0
 }
 
 func (sb *Superblock) HasIncompatibleFeature(mask uint32) bool {
-	return (sb.SFeatureIncompat & mask) > 0
+	return (sb.data.SFeatureIncompat & mask) > 0
+}
+
+func (sb *Superblock) BlockGroupNumberWithAbsoluteInodeNumber(absoluteInodeNumber int) int {
+	return (absoluteInodeNumber - 1) / int(sb.data.SInodesPerGroup)
+}
+
+func (sb *Superblock) BlockGroupInodeNumberWithAbsoluteInodeNumber(absoluteInodeNumber int) int {
+	return (absoluteInodeNumber - 1) % int(sb.data.SInodesPerGroup)
+}
+
+// func (sb *Superblock) BlockGroupInodeTableOffsetWithBlockGroupInodeNumber(blockGroupInodeNumber int) int {
+// 	return blockGroupInodeNumber * int(sb.data.SInodeSize)
+// }
+
+func (sb *Superblock) BlockCount() uint64 {
+	return uint64(sb.data.SBlocksCountHi<<32) | uint64(sb.data.SBlocksCountLo)
+}
+
+func (sb *Superblock) BlockGroupCount() (blockGroups uint64) {
+	blockGroups = sb.BlockCount() / uint64(sb.data.SBlocksPerGroup)
+
+	// If we have less than one block-group's worth of blocks.
+	if blockGroups == 0 {
+		blockGroups = 1
+	}
+
+	return blockGroups
 }
 
 func (sb *Superblock) Dump() {
 	fmt.Printf("Superblock Info\n")
 	fmt.Printf("\n")
 
-	fmt.Printf("SInodesCount: (%d)\n", sb.SInodesCount)
-	fmt.Printf("SBlocksCountLo: (%d)\n", sb.SBlocksCountLo)
-	fmt.Printf("SRBlocksCountLo: (%d)\n", sb.SRBlocksCountLo)
-	fmt.Printf("SFreeBlocksCountLo: (%d)\n", sb.SFreeBlocksCountLo)
-	fmt.Printf("SFreeInodesCount: (%d)\n", sb.SFreeInodesCount)
-	fmt.Printf("SFirstDataBlock: (%d)\n", sb.SFirstDataBlock)
-	fmt.Printf("SLogBlockSize: (%d) => (%d)\n", sb.SLogBlockSize, sb.BlockSize())
-	fmt.Printf("SLogClusterSize: (%d)\n", sb.SLogClusterSize)
-	fmt.Printf("SBlocksPerGroup: (%d)\n", sb.SBlocksPerGroup)
-	fmt.Printf("SClustersPerGroup: (%d)\n", sb.SClustersPerGroup)
-	fmt.Printf("SInodesPerGroup: (%d)\n", sb.SInodesPerGroup)
+	fmt.Printf("SInodesCount: (%d)\n", sb.data.SInodesCount)
+	fmt.Printf("SBlocksCountLo: (%d)\n", sb.data.SBlocksCountLo)
+	fmt.Printf("SRBlocksCountLo: (%d)\n", sb.data.SRBlocksCountLo)
+	fmt.Printf("SFreeBlocksCountLo: (%d)\n", sb.data.SFreeBlocksCountLo)
+	fmt.Printf("SFreeInodesCount: (%d)\n", sb.data.SFreeInodesCount)
+	fmt.Printf("SFirstDataBlock: (%d)\n", sb.data.SFirstDataBlock)
+	fmt.Printf("SLogBlockSize: (%d) => (%d)\n", sb.data.SLogBlockSize, sb.BlockSize())
+	fmt.Printf("SLogClusterSize: (%d)\n", sb.data.SLogClusterSize)
+	fmt.Printf("SBlocksPerGroup: (%d)\n", sb.data.SBlocksPerGroup)
+	fmt.Printf("SClustersPerGroup: (%d)\n", sb.data.SClustersPerGroup)
+	fmt.Printf("SInodesPerGroup: (%d)\n", sb.data.SInodesPerGroup)
 	fmt.Printf("SMtime: [%s]\n", sb.MountTime())
 	fmt.Printf("SWtime: [%s]\n", sb.WriteTime())
-	fmt.Printf("SMntCount: (%d)\n", sb.SMntCount)
-	fmt.Printf("SMaxMntCount: (%d)\n", sb.SMaxMntCount)
-	fmt.Printf("SMagic: [%04x]\n", sb.SMagic)
-	fmt.Printf("SState: (%04x)\n", sb.SState)
-	fmt.Printf("SErrors: (%d)\n", sb.SErrors)
-	fmt.Printf("SMinorRevLevel: (%d)\n", sb.SMinorRevLevel)
+	fmt.Printf("SMntCount: (%d)\n", sb.data.SMntCount)
+	fmt.Printf("SMaxMntCount: (%d)\n", sb.data.SMaxMntCount)
+	fmt.Printf("SMagic: [%04x]\n", sb.data.SMagic)
+	fmt.Printf("SState: (%04x)\n", sb.data.SState)
+	fmt.Printf("SErrors: (%d)\n", sb.data.SErrors)
+	fmt.Printf("SMinorRevLevel: (%d)\n", sb.data.SMinorRevLevel)
 	fmt.Printf("SLastcheck: [%s]\n", sb.LastCheckTime())
-	fmt.Printf("SCheckinterval: (%d)\n", sb.SCheckinterval)
-	fmt.Printf("SCreatorOs: (%d)\n", sb.SCreatorOs)
-	fmt.Printf("SRevLevel: (%d)\n", sb.SRevLevel)
-	fmt.Printf("SDefResuid: (%d)\n", sb.SDefResuid)
-	fmt.Printf("SDefResgid: (%d)\n", sb.SDefResgid)
+	fmt.Printf("SCheckinterval: (%d)\n", sb.data.SCheckinterval)
+	fmt.Printf("SCreatorOs: (%d)\n", sb.data.SCreatorOs)
+	fmt.Printf("SRevLevel: (%d)\n", sb.data.SRevLevel)
+	fmt.Printf("SDefResuid: (%d)\n", sb.data.SDefResuid)
+	fmt.Printf("SDefResgid: (%d)\n", sb.data.SDefResgid)
 
 	// TODO(dustin): Finish.
 
+	fmt.Printf("SDescSize: (%d)\n", sb.data.SDescSize)
+	fmt.Printf("SLogGroupsPerFlex: (%d)\n", sb.data.SLogGroupsPerFlex)
+	fmt.Printf("SInodeSize: (%d)\n", sb.data.SInodeSize)
+
+	fmt.Printf("BlockCount: (%d)\n", sb.BlockCount())
+	fmt.Printf("BlockGroupCount: (%d)\n", sb.BlockGroupCount())
+	fmt.Printf("SBlocksPerGroup: (%d)\n", sb.data.SBlocksPerGroup)
+
 	fmt.Printf("\n")
 
+	sb.DumpCompatibilities(false)
+}
+
+func (sb *Superblock) DumpCompatibilities(includeFalses bool) {
 	fmt.Printf("Feature (Compatible)\n")
 	fmt.Printf("\n")
 
 	for _, name := range SbFeatureCompatNames {
 		bit := SbFeatureCompatLookup[name]
-		fmt.Printf("  %15s (0x%02x): %v\n", name, bit, sb.HasCompatibleFeature(bit))
+		value := sb.HasCompatibleFeature(bit)
+
+		if includeFalses == true || value == true {
+			fmt.Printf("  %15s (0x%02x): %v\n", name, bit, value)
+		}
 	}
 
 	fmt.Printf("\n")
@@ -333,7 +422,11 @@ func (sb *Superblock) Dump() {
 
 	for _, name := range SbFeatureRoCompatNames {
 		bit := SbFeatureRoCompatLookup[name]
-		fmt.Printf("  %15s (0x%02x): %v\n", name, bit, sb.HasReadonlyCompatibleFeature(bit))
+		value := sb.HasReadonlyCompatibleFeature(bit)
+
+		if includeFalses == true || value == true {
+			fmt.Printf("  %15s (0x%02x): %v\n", name, bit, value)
+		}
 	}
 
 	fmt.Printf("\n")
@@ -343,7 +436,11 @@ func (sb *Superblock) Dump() {
 
 	for _, name := range SbFeatureIncompatNames {
 		bit := SbFeatureIncompatLookup[name]
-		fmt.Printf("  %15s (0x%02x): %v\n", name, bit, sb.HasIncompatibleFeature(bit))
+		value := sb.HasIncompatibleFeature(bit)
+
+		if includeFalses == true || value == true {
+			fmt.Printf("  %15s (0x%02x): %v\n", name, bit, value)
+		}
 	}
 
 	fmt.Printf("\n")
@@ -576,23 +673,3 @@ var (
 		"Encrypt":                      SbFeatureIncompatEncrypt,
 	}
 )
-
-func ParseSuperblock(r io.Reader) (sb *Superblock, err error) {
-	defer func() {
-		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
-		}
-	}()
-
-	sb = new(Superblock)
-
-	err = binary.Read(r, binary.LittleEndian, sb)
-	log.PanicIf(err)
-
-	if sb.SMagic != Ext4Magic {
-		log.Panic(ErrNotExt4)
-	}
-
-	return sb, nil
-}

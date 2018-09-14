@@ -3,6 +3,7 @@ package ext4
 import (
 	"fmt"
 	"io"
+	"sort"
 	"time"
 
 	"encoding/binary"
@@ -16,6 +17,68 @@ const (
 	Ext4DindBlock  = (Ext4IndBlock + 1)
 	Ext4TindBlock  = (Ext4DindBlock + 1)
 	Ext4NBlocks    = (Ext4TindBlock + 1)
+)
+
+const (
+	InodeFlagSecrm           = 0x1
+	InodeFlagUnrm            = 0x2
+	InodeFlagCompr           = 0x4
+	InodeFlagSync            = 0x8
+	InodeFlagImmutable       = 0x10
+	InodeFlagAppend          = 0x20
+	InodeFlagNodump          = 0x40
+	InodeFlagNoatime         = 0x80
+	InodeFlagDirty           = 0x100
+	InodeFlagComprblk        = 0x200
+	InodeFlagNocompr         = 0x400
+	InodeFlagEncrypt         = 0x800
+	InodeFlagIndex           = 0x1000
+	InodeFlagImagic          = 0x2000
+	InodeFlagJournalData     = 0x4000
+	InodeFlagNotail          = 0x8000
+	InodeFlagDirsync         = 0x10000
+	InodeFlagTopdir          = 0x20000
+	InodeFlagHugeFile        = 0x40000
+	InodeFlagExtents         = 0x80000
+	InodeFlagEaInode         = 0x200000
+	InodeFlagEofblocks       = 0x400000
+	InodeFlagSnapfile        = 0x01000000
+	InodeFlagSnapfileDeleted = 0x04000000
+	InodeFlagSnapfileShrunk  = 0x08000000
+	InodeFlagInlineData      = 0x10000000
+	InodeFlagProjinherit     = 0x20000000
+)
+
+var (
+	InodeFlagLookup = map[string]int{
+		"Secrm":           InodeFlagSecrm,
+		"Unrm":            InodeFlagUnrm,
+		"Compr":           InodeFlagCompr,
+		"Sync":            InodeFlagSync,
+		"Immutable":       InodeFlagImmutable,
+		"Append":          InodeFlagAppend,
+		"Nodump":          InodeFlagNodump,
+		"Noatime":         InodeFlagNoatime,
+		"Dirty":           InodeFlagDirty,
+		"Comprblk":        InodeFlagComprblk,
+		"Nocompr":         InodeFlagNocompr,
+		"Encrypt":         InodeFlagEncrypt,
+		"Index":           InodeFlagIndex,
+		"Imagic":          InodeFlagImagic,
+		"JournalData":     InodeFlagJournalData,
+		"Notail":          InodeFlagNotail,
+		"Dirsync":         InodeFlagDirsync,
+		"Topdir":          InodeFlagTopdir,
+		"HugeFile":        InodeFlagHugeFile,
+		"Extents":         InodeFlagExtents,
+		"EaInode":         InodeFlagEaInode,
+		"Eofblocks":       InodeFlagEofblocks,
+		"Snapfile":        InodeFlagSnapfile,
+		"SnapfileDeleted": InodeFlagSnapfileDeleted,
+		"SnapfileShrunk":  InodeFlagSnapfileShrunk,
+		"InlineData":      InodeFlagInlineData,
+		"Projinherit":     InodeFlagProjinherit,
+	}
 )
 
 type InodeData struct {
@@ -132,23 +195,27 @@ func (inode *Inode) Data() *InodeData {
 }
 
 func (inode *Inode) AccessTime() time.Time {
-	return time.Unix(int64(inode.Data().IAtime), 0)
+	return time.Unix(int64(inode.data.IAtime), 0)
 }
 
 func (inode *Inode) InodeChangeTime() time.Time {
-	return time.Unix(int64(inode.Data().ICtime), 0)
+	return time.Unix(int64(inode.data.ICtime), 0)
 }
 
 func (inode *Inode) ModificationTime() time.Time {
-	return time.Unix(int64(inode.Data().IMtime), 0)
+	return time.Unix(int64(inode.data.IMtime), 0)
 }
 
 func (inode *Inode) DeletionTime() time.Time {
-	return time.Unix(int64(inode.Data().IDtime), 0)
+	return time.Unix(int64(inode.data.IDtime), 0)
 }
 
 func (inode *Inode) FileCreationTime() time.Time {
-	return time.Unix(int64(inode.Data().ICrtime), 0)
+	return time.Unix(int64(inode.data.ICrtime), 0)
+}
+
+func (inode *Inode) Flag(flag int) bool {
+	return (inode.data.IFlags & uint32(flag)) > 0
 }
 
 func (inode *Inode) Dump() {
@@ -167,4 +234,37 @@ func (inode *Inode) Dump() {
 
 	// TODO(dustin): !! Print the rest of the fields.
 
+}
+
+func (inode *Inode) DumpFlags(includeFalses bool) {
+	defer func() {
+		if state := recover(); state != nil {
+			err := log.Wrap(state.(error))
+			log.Panic(err)
+		}
+	}()
+
+	fmt.Printf("\n")
+	fmt.Printf("Flags:\n")
+	fmt.Printf("\n")
+
+	names := make([]string, len(InodeFlagLookup))
+	i := 0
+	for name, _ := range InodeFlagLookup {
+		names[i] = name
+		i++
+	}
+
+	sort.Strings(names)
+
+	for _, name := range names {
+		bit := InodeFlagLookup[name]
+		value := inode.Flag(bit)
+
+		if includeFalses == true || value == true {
+			fmt.Printf("%s: %v\n", name, value)
+		}
+	}
+
+	fmt.Printf("\n")
 }

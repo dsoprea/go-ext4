@@ -78,7 +78,7 @@ func NewExtentNavigatorWithReadSeeker(rs io.ReadSeeker, inode *Inode) *ExtentNav
 // for the principal inode.
 //
 // "logical", meaning that (0) refers to the first block of this inode's data.
-func (en *ExtentNavigator) PhysicalBlock(lBlock uint64) (pBlock uint64, err error) {
+func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {
 	defer func() {
 		if state := recover(); state != nil {
 			err := log.Wrap(state.(error))
@@ -86,10 +86,22 @@ func (en *ExtentNavigator) PhysicalBlock(lBlock uint64) (pBlock uint64, err erro
 		}
 	}()
 
-	pBlock, err = en.parseHeader(en.inode.Data().IBlock[:], lBlock)
+	sb := en.inode.BlockGroupDescriptor().Superblock()
+
+	blockSize := sb.BlockSize()
+	lBlockNumber := offset / uint64(blockSize)
+	pBlockOffset := offset % uint64(blockSize)
+
+	inodeIblock := en.inode.Data().IBlock[:]
+	pBlockNumber, err := en.parseHeader(inodeIblock, lBlockNumber)
 	log.PanicIf(err)
 
-	return pBlock, nil
+	// We'll return whichever data we got between the offset and the end of
+	// that immediate physical block.
+	rawPBlockData, err := sb.ReadPhysicalBlock(pBlockNumber, blockSize)
+	log.PanicIf(err)
+
+	return rawPBlockData[pBlockOffset:], nil
 }
 
 // parseHeader parses the extent header and then recursively processes the
@@ -104,7 +116,7 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (
 
 	b := bytes.NewBuffer(extentHeaderData)
 
-	// TODO(dustin): Pass this in as another argument and only parse if we received a nil. Except for the first one, we'll otherwise double-parse every header struct.
+	// TODO(dustin): Pass this in as another argument and only parse if we receive a nil. Except for the first one, we'll otherwise double-parse every header struct.
 	eh := new(ExtentHeaderNode)
 
 	err = binary.Read(b, binary.LittleEndian, eh)
@@ -113,8 +125,6 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (
 	if eh.EhMagic != ExtentMagic {
 		log.Panicf("extent-header magic-bytes not correct: (%04x)", eh.EhMagic)
 	}
-
-	// fmt.Printf("HEADER NODE (%d): %s\n", lBlock, eh)
 
 	if eh.EhDepth == 0 {
 		// Our nodes are leaf nodes.
@@ -129,8 +139,6 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (
 
 		var hit *ExtentLeafNode
 		for i, eln := range leafNodes {
-			// fmt.Printf("LEAF NODE (%d,%d): %s\n", lBlock, i, &eln)
-
 			if uint64(eln.EeFirstLogicalBlock+uint32(eln.EeLogicalBlockCount)) > lBlock {
 				hit = &leafNodes[i]
 				break
@@ -141,60 +149,58 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (
 		pBlock := hit.StartPhysicalBlock() + blockExtOffset
 
 		return pBlock, nil
-	}
+	} else {
+		// Our nodes are interior/index nodes.
 
-	// Our nodes are interior/index nodes.
+		indexNodes := make([]ExtentIndexNode, eh.EhEntryCount)
 
-	indexNodes := make([]ExtentIndexNode, eh.EhEntryCount)
+		err = binary.Read(b, binary.LittleEndian, &indexNodes)
+		log.PanicIf(err)
 
-	err = binary.Read(b, binary.LittleEndian, &indexNodes)
-	log.PanicIf(err)
-
-	var hit *ExtentIndexNode
-	for i, ein := range indexNodes {
-		// fmt.Printf("INDEX NODE (%d,%d): %s\n", lBlock, i, &ein)
-
-		if uint64(ein.EiLogicalBlock) < lBlock {
-			hit = &indexNodes[i]
-		} else {
-			break
+		var hit *ExtentIndexNode
+		for i, ein := range indexNodes {
+			if uint64(ein.EiLogicalBlock) <= lBlock {
+				hit = &indexNodes[i]
+			} else {
+				break
+			}
 		}
+
+		if hit == nil {
+			log.Panicf("None of the index nodes at the current level of the "+
+				"extent-tree for inode (%d) had a logical-block less "+
+				"than what was requested (%d).", en.inode, lBlock)
+		}
+
+		pBlock := hit.LeafPhysicalBlock()
+
+		// TODO(dustin): Refactor this to prevent reparsing the data in the next recursion when we're already parsing it here.
+
+		// Do a preliminary read of the header to establish how much data we
+		// really need.
+
+		sb := en.inode.BlockGroupDescriptor().Superblock()
+
+		data, err := sb.ReadPhysicalBlock(pBlock, ExtentHeaderSize)
+		log.PanicIf(err)
+
+		nonleafHeaderBuffer := bytes.NewBuffer(data)
+
+		nextEh := new(ExtentHeaderNode)
+
+		err = binary.Read(nonleafHeaderBuffer, binary.LittleEndian, nextEh)
+		log.PanicIf(err)
+
+		// Now, read the full data for our child extents.
+
+		childExtentsLength := uint32(ExtentHeaderSize + ExtentIndexAndLeafSize*nextEh.EhEntryCount)
+
+		childExtents, err := sb.ReadPhysicalBlock(pBlock, childExtentsLength)
+		log.PanicIf(err)
+
+		dataPBlock, err = en.parseHeader(childExtents, lBlock)
+		log.PanicIf(err)
+
+		return dataPBlock, nil
 	}
-
-	if hit == nil {
-		log.Panicf("None of the index nodes at the current level of the "+
-			"extent-tree for inode (%d) had a logical-block less "+
-			"than what was requested (%d).", en.inode, lBlock)
-	}
-
-	pBlock := hit.LeafPhysicalBlock()
-
-	// TODO(dustin): Refactor this to prevent reparsing the data in the next recursion when we're already parsing it here.
-
-	// Do a preliminary read of the header to establish how much data we
-	// really need.
-
-	sb := en.inode.BlockGroupDescriptor().Superblock()
-
-	data, err := sb.ReadPhysicalBlock(pBlock, ExtentHeaderSize)
-	log.PanicIf(err)
-
-	nonleafHeaderBuffer := bytes.NewBuffer(data)
-
-	nextEh := new(ExtentHeaderNode)
-
-	err = binary.Read(nonleafHeaderBuffer, binary.LittleEndian, nextEh)
-	log.PanicIf(err)
-
-	// Now, read the full data for our child extents.
-
-	childExtentsLength := uint32(ExtentHeaderSize + ExtentIndexAndLeafSize*nextEh.EhEntryCount)
-
-	childExtents, err := sb.ReadPhysicalBlock(pBlock, childExtentsLength)
-	log.PanicIf(err)
-
-	dataPBlock, err = en.parseHeader(childExtents, lBlock)
-	log.PanicIf(err)
-
-	return dataPBlock, nil
 }

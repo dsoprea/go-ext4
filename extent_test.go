@@ -1,6 +1,7 @@
 package ext4
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path"
@@ -39,26 +40,20 @@ func TestExtentNavigator_Block(t *testing.T) {
 
 	en := NewExtentNavigatorWithReadSeeker(f, inode)
 
-	pBlock1, err := en.PhysicalBlock(1)
+	expectedBytes, err := ioutil.ReadFile("assets/thejungle.txt")
 	log.PanicIf(err)
 
-	data1, err := sb.ReadPhysicalBlock(pBlock1, sb.BlockSize())
-	log.PanicIf(err)
+	actualBytes := make([]byte, len(expectedBytes))
 
-	pBlock2, err := en.PhysicalBlock(2)
-	log.PanicIf(err)
+	for offset := uint64(0); offset < inode.Size(); {
+		data, err := en.Read(offset)
+		log.PanicIf(err)
 
-	data2, err := sb.ReadPhysicalBlock(pBlock2, sb.BlockSize())
-	log.PanicIf(err)
+		copy(actualBytes[offset:], data)
+		offset += uint64(len(data))
+	}
 
-	actual := string(data1) + string(data2)
-
-	// We need to preserve newlines and which other characters we had trouble
-	// with when pasting in a raw string literal.
-	expectedBytes, err := ioutil.ReadFile("assets/TestExtentNavigator_Block_expected.txt")
-	log.PanicIf(err)
-
-	if actual != string(expectedBytes) {
-		t.Fatalf("Retrieved data not correct.")
+	if bytes.Compare(actualBytes, expectedBytes) != 0 {
+		t.Fatalf("Bytes not read correctly.")
 	}
 }

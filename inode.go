@@ -227,6 +227,10 @@ func (inode *Inode) FileCreationTime() time.Time {
 	return time.Unix(int64(inode.data.ICrtime), 0)
 }
 
+func (inode *Inode) Size() uint64 {
+	return (uint64(inode.data.ISizeHigh) << 32) | uint64(inode.data.ISizeLo)
+}
+
 func (inode *Inode) Flag(flag int) bool {
 	return (inode.data.IFlags & uint32(flag)) > 0
 }

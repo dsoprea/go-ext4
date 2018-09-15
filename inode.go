@@ -160,6 +160,10 @@ type Inode struct {
 	bgd  *BlockGroupDescriptor
 }
 
+func (inode *Inode) BlockGroupDescriptor() (bgd *BlockGroupDescriptor) {
+	return inode.bgd
+}
+
 func NewInodeWithReadSeeker(bgd *BlockGroupDescriptor, rs io.ReadSeeker, absoluteInodeNumber int) (inode *Inode, err error) {
 	defer func() {
 		if state := recover(); state != nil {

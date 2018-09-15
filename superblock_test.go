@@ -1,10 +1,14 @@
 package ext4
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"testing"
+
+	"encoding/binary"
 
 	"github.com/dsoprea/go-logging"
 )
@@ -52,5 +56,44 @@ func TestNewSuperblockWithReader(t *testing.T) {
 		t.Fatalf("SMkfsTime not correct.")
 	} else if sb.Data().SHashSeed != [4]uint32{0x36b23193, 0x8241e711, 0x56e1ab9, 0x8cb728de} {
 		t.Fatalf("SHashSeed not correct.")
+	}
+}
+
+func TestSuperblock_ReadPhysicalBlock(t *testing.T) {
+	filepath := path.Join(assetsPath, "tiny.ext4")
+
+	f, err := os.Open(filepath)
+	log.PanicIf(err)
+
+	defer f.Close()
+
+	_, err = f.Seek(Superblock0Offset, io.SeekStart)
+	log.PanicIf(err)
+
+	sb, err := NewSuperblockWithReader(f)
+	log.PanicIf(err)
+
+	pBlock := uint64(sb.Data().SFirstDataBlock)
+	data, err := sb.ReadPhysicalBlock(pBlock, SuperblockSize)
+	log.PanicIf(err)
+
+	// Confirm that the read data is the right size.
+
+	if uint32(len(data)) != SuperblockSize {
+		t.Fatalf("Read data is not the right size: (%d) != (%d)", len(data), SuperblockSize)
+	}
+
+	// See if the data parses as a SB and matches the one we already have (as a
+	// weak form of validation).
+
+	recoveredSbd := new(SuperblockData)
+
+	b := bytes.NewBuffer(data)
+
+	err = binary.Read(b, binary.LittleEndian, recoveredSbd)
+	log.PanicIf(err)
+
+	if reflect.DeepEqual(recoveredSbd, sb.Data()) == false {
+		t.Fatalf("Read block was not correct.")
 	}
 }

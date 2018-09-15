@@ -255,13 +255,14 @@ type SuperblockData struct {
 type Superblock struct {
 	data      *SuperblockData
 	blockSize uint32
+	rs        io.ReadSeeker
 }
 
 func (sb *Superblock) Data() *SuperblockData {
 	return sb.data
 }
 
-func NewSuperblockWithReader(r io.Reader) (sb *Superblock, err error) {
+func NewSuperblockWithReader(rs io.ReadSeeker) (sb *Superblock, err error) {
 	defer func() {
 		if state := recover(); state != nil {
 			err := log.Wrap(state.(error))
@@ -271,7 +272,7 @@ func NewSuperblockWithReader(r io.Reader) (sb *Superblock, err error) {
 
 	sbd := new(SuperblockData)
 
-	err = binary.Read(r, binary.LittleEndian, sbd)
+	err = binary.Read(rs, binary.LittleEndian, sbd)
 	log.PanicIf(err)
 
 	if sbd.SMagic != Ext4Magic {
@@ -283,6 +284,7 @@ func NewSuperblockWithReader(r io.Reader) (sb *Superblock, err error) {
 	sb = &Superblock{
 		data:      sbd,
 		blockSize: blockSize,
+		rs:        rs,
 	}
 
 	// Assert our present operating assumptions in order to stabilize development.
@@ -330,12 +332,32 @@ func (sb *Superblock) HasIncompatibleFeature(mask uint32) bool {
 	return (sb.data.SFeatureIncompat & mask) > 0
 }
 
+// TODO(dustin): !! Make our ints into uint64s.
+
 func (sb *Superblock) BlockGroupNumberWithAbsoluteInodeNumber(absoluteInodeNumber int) int {
 	return (absoluteInodeNumber - 1) / int(sb.data.SInodesPerGroup)
 }
 
 func (sb *Superblock) BlockGroupInodeNumberWithAbsoluteInodeNumber(absoluteInodeNumber int) int {
 	return (absoluteInodeNumber - 1) % int(sb.data.SInodesPerGroup)
+}
+
+func (sb *Superblock) ReadPhysicalBlock(absoluteBlockNumber uint64, length uint32) (data []byte, err error) {
+	if uint32(length) > sb.blockSize {
+		log.Panicf("can't read more bytes (%d) than block-size (%d)", length, sb.blockSize)
+	}
+
+	offset := absoluteBlockNumber * uint64(sb.blockSize)
+
+	_, err = sb.rs.Seek(int64(offset), io.SeekStart)
+	log.PanicIf(err)
+
+	data = make([]byte, length)
+
+	_, err = sb.rs.Read(data)
+	log.PanicIf(err)
+
+	return data, nil
 }
 
 // func (sb *Superblock) BlockGroupInodeTableOffsetWithBlockGroupInodeNumber(blockGroupInodeNumber int) int {

@@ -6,6 +6,8 @@ import (
 	"path"
 	"testing"
 
+	"io/ioutil"
+
 	"github.com/dsoprea/go-logging"
 )
 
@@ -35,7 +37,28 @@ func TestExtentNavigator_Block(t *testing.T) {
 	inode, err := NewInodeWithReadSeeker(bgd, f, inodeNumber)
 	log.PanicIf(err)
 
-	en := NewExtentNavigator(f, inode)
-	en.Block(0)
-	// en.Block(1)
+	en := NewExtentNavigatorWithReadSeeker(f, inode)
+
+	pBlock1, err := en.PhysicalBlock(1)
+	log.PanicIf(err)
+
+	data1, err := sb.ReadPhysicalBlock(pBlock1, sb.BlockSize())
+	log.PanicIf(err)
+
+	pBlock2, err := en.PhysicalBlock(2)
+	log.PanicIf(err)
+
+	data2, err := sb.ReadPhysicalBlock(pBlock2, sb.BlockSize())
+	log.PanicIf(err)
+
+	actual := string(data1) + string(data2)
+
+	// We need to preserve newlines and which other characters we had trouble
+	// with when pasting in a raw string literal.
+	expectedBytes, err := ioutil.ReadFile("assets/TestExtentNavigator_Block_expected.txt")
+	log.PanicIf(err)
+
+	if actual != string(expectedBytes) {
+		t.Fatalf("Retrieved data not correct.")
+	}
 }

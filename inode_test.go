@@ -70,4 +70,7 @@ func TestNewInodeWithReadSeeker_FileInode(t *testing.T) {
 	if actualTimestamp != "2018-09-08 02:08:45 -0400 EDT" {
 		t.Fatalf("InodeChangeTime() timestamp not correct: [%s]", actualTimestamp)
 	}
+
+	// TODO(dustin): !! For experimentation/debugging.
+	// inode.DumpDirectory()
 }

@@ -107,9 +107,16 @@ type InodeData struct {
 	// } osd1;             /* OS dependent 1 */
 	Osd1 [4]byte
 
-	IBlock      [Ext4NBlocks]uint32 /* Pointers to blocks */
-	IGeneration uint32              /* File version (for NFS) */
-	IFileAclLo  uint32              /* File ACL */
+	/*
+		IBlock is a general buffer for our data, which can have various
+		interpretations. `Ext4NBlocks` comes from the kernel where it is a count in
+		terms of uint32's, which is then cast as a struct. However, it works better
+		for us as an array of bytes.
+	*/
+	IBlock [Ext4NBlocks * 4]byte
+
+	IGeneration uint32 /* File version (for NFS) */
+	IFileAclLo  uint32 /* File ACL */
 	ISizeHigh   uint32
 	IObsoFaddr  uint32 /* Obsoleted fragment address */
 
@@ -150,6 +157,7 @@ type InodeData struct {
 
 type Inode struct {
 	data *InodeData
+	bgd  *BlockGroupDescriptor
 }
 
 func NewInodeWithReadSeeker(bgd *BlockGroupDescriptor, rs io.ReadSeeker, absoluteInodeNumber int) (inode *Inode, err error) {
@@ -185,6 +193,7 @@ func NewInodeWithReadSeeker(bgd *BlockGroupDescriptor, rs io.ReadSeeker, absolut
 
 	inode = &Inode{
 		data: id,
+		bgd:  bgd,
 	}
 
 	return inode, nil
@@ -268,3 +277,25 @@ func (inode *Inode) DumpFlags(includeFalses bool) {
 
 	fmt.Printf("\n")
 }
+
+// TODO(dustin): !! For experimentation/debugging.
+//
+// func (inode *Inode) DumpDirectory() {
+//
+// 	// Assert our present operating assumptions in order to stabilize development.
+//
+// 	if inode.Flag(InodeFlagIndex) != false {
+// 		// TODO(dustin): Might be present in large directories. We might need to implement both mechanisms (this and "linear directories").
+// 		log.Panicf("hash-tree directories not currently supported")
+// 	} else if inode.Flag(InodeFlagExtents) != true {
+// 		log.Panicf("only inodes having extent trees are supported")
+// 	}
+//
+// 	sb := inode.bgd.Superblock()
+//
+// 	filetypeInInode := sb.HasIncompatibleFeature(SbFeatureIncompatFiletype)
+// 	if filetypeInInode == false {
+// 		log.Panicf("only support inode that embed the filetype")
+// 	}
+//
+// }

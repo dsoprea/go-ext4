@@ -285,11 +285,11 @@ func NewSuperblockWithReader(r io.Reader) (sb *Superblock, err error) {
 		blockSize: blockSize,
 	}
 
+	// Assert our present operating assumptions in order to stabilize development.
+
 	if sb.HasIncompatibleFeature(SbFeatureIncompatMetaBg) == true {
 		log.Panicf("meta_bg not supported")
-	}
-
-	if sb.HasIncompatibleFeature(SbFeatureIncompatFlexBg) == false {
+	} else if sb.HasIncompatibleFeature(SbFeatureIncompatFlexBg) == false {
 		log.Panicf("only filesystems with flex_bg are supported")
 	}
 

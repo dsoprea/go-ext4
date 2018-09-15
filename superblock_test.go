@@ -74,12 +74,12 @@ func TestSuperblock_ReadPhysicalBlock(t *testing.T) {
 	log.PanicIf(err)
 
 	pBlock := uint64(sb.Data().SFirstDataBlock)
-	data, err := sb.ReadPhysicalBlock(pBlock, SuperblockSize)
+	data, err := sb.ReadPhysicalBlock(pBlock, uint64(SuperblockSize))
 	log.PanicIf(err)
 
 	// Confirm that the read data is the right size.
 
-	if uint32(len(data)) != SuperblockSize {
+	if uint64(len(data)) != uint64(SuperblockSize) {
 		t.Fatalf("Read data is not the right size: (%d) != (%d)", len(data), SuperblockSize)
 	}
 

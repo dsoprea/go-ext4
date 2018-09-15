@@ -342,8 +342,8 @@ func (sb *Superblock) BlockGroupInodeNumberWithAbsoluteInodeNumber(absoluteInode
 	return (absoluteInodeNumber - 1) % int(sb.data.SInodesPerGroup)
 }
 
-func (sb *Superblock) ReadPhysicalBlock(absoluteBlockNumber uint64, length uint32) (data []byte, err error) {
-	if uint32(length) > sb.blockSize {
+func (sb *Superblock) ReadPhysicalBlock(absoluteBlockNumber uint64, length uint64) (data []byte, err error) {
+	if length > uint64(sb.blockSize) {
 		log.Panicf("can't read more bytes (%d) than block-size (%d)", length, sb.blockSize)
 	}
 
@@ -359,10 +359,6 @@ func (sb *Superblock) ReadPhysicalBlock(absoluteBlockNumber uint64, length uint3
 
 	return data, nil
 }
-
-// func (sb *Superblock) BlockGroupInodeTableOffsetWithBlockGroupInodeNumber(blockGroupInodeNumber int) int {
-// 	return blockGroupInodeNumber * int(sb.data.SInodeSize)
-// }
 
 func (sb *Superblock) BlockCount() uint64 {
 	return uint64(sb.data.SBlocksCountHi<<32) | uint64(sb.data.SBlocksCountLo)

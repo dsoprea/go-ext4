@@ -88,9 +88,9 @@ func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {
 
 	sb := en.inode.BlockGroupDescriptor().Superblock()
 
-	blockSize := sb.BlockSize()
-	lBlockNumber := offset / uint64(blockSize)
-	pBlockOffset := offset % uint64(blockSize)
+	blockSize := uint64(sb.BlockSize())
+	lBlockNumber := offset / blockSize
+	pBlockOffset := offset % blockSize
 
 	inodeIblock := en.inode.Data().IBlock[:]
 	pBlockNumber, err := en.parseHeader(inodeIblock, lBlockNumber)
@@ -181,7 +181,7 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (
 
 		sb := en.inode.BlockGroupDescriptor().Superblock()
 
-		data, err := sb.ReadPhysicalBlock(pBlock, ExtentHeaderSize)
+		data, err := sb.ReadPhysicalBlock(pBlock, uint64(ExtentHeaderSize))
 		log.PanicIf(err)
 
 		nonleafHeaderBuffer := bytes.NewBuffer(data)
@@ -193,9 +193,9 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (
 
 		// Now, read the full data for our child extents.
 
-		childExtentsLength := uint32(ExtentHeaderSize + ExtentIndexAndLeafSize*nextEh.EhEntryCount)
+		childExtentsLength := ExtentHeaderSize + ExtentIndexAndLeafSize*nextEh.EhEntryCount
 
-		childExtents, err := sb.ReadPhysicalBlock(pBlock, childExtentsLength)
+		childExtents, err := sb.ReadPhysicalBlock(pBlock, uint64(childExtentsLength))
 		log.PanicIf(err)
 
 		dataPBlock, err = en.parseHeader(childExtents, lBlock)

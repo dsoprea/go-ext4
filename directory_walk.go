@@ -111,6 +111,8 @@ func (dw *DirectoryWalk) Next() (fullPath string, de *DirectoryEntry, err error)
 		}
 
 		// If it's a directory, enqueue it).
+		// TODO(dustin): We get the impression that the "lost+found" inode isn't necessarily always in inode (11), so we only do a string match. Use `(superblock).SLpfIno` instead.
+		// TODO(dustin): "lost+found" produces some empty entries for our tiny, mostly untouched, mostly vanilla test image, which doesn't make sense to us. Just skipping for now. Revisit.
 		if de.IsDirectory() && filename != "lost+found" {
 			childInode, childDb, err := dw.openInode(int(de.data.Inode))
 			log.PanicIf(err)

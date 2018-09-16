@@ -24,6 +24,29 @@ func NewInodeReader(en *ExtentNavigator) *InodeReader {
 	}
 }
 
+func (ir *InodeReader) fill() (err error) {
+	defer func() {
+		if state := recover(); state != nil {
+			err := log.Wrap(state.(error))
+			log.Panic(err)
+		}
+	}()
+
+	if len(ir.currentBlock) == 0 {
+		if ir.bytesRead >= ir.bytesTotal {
+			return io.EOF
+		}
+
+		data, err := ir.en.Read(ir.bytesRead)
+		log.PanicIf(err)
+
+		ir.currentBlock = data
+		ir.bytesRead += uint64(len(data))
+	}
+
+	return nil
+}
+
 // Read fills the given slice with data and returns an `io.EOF` error with (0)
 // bytes when done. (`n`) may be less then `len(p)`.
 func (ir *InodeReader) Read(p []byte) (n int, err error) {
@@ -34,16 +57,11 @@ func (ir *InodeReader) Read(p []byte) (n int, err error) {
 		}
 	}()
 
-	if len(ir.currentBlock) == 0 {
-		if ir.bytesRead >= ir.bytesTotal {
-			return 0, io.EOF
-		}
-
-		data, err := ir.en.Read(ir.bytesRead)
+	err = ir.fill()
+	if err == io.EOF {
+		return 0, io.EOF
+	} else if err != nil {
 		log.PanicIf(err)
-
-		ir.currentBlock = data
-		ir.bytesRead += uint64(len(data))
 	}
 
 	// Determine how much of the buffer we can fill.
@@ -53,4 +71,26 @@ func (ir *InodeReader) Read(p []byte) (n int, err error) {
 	ir.currentBlock = ir.currentBlock[currentBytesReadCount:]
 
 	return int(currentBytesReadCount), nil
+}
+
+// Skip simulates a read but just discards the data.
+func (ir *InodeReader) Skip(n uint64) (skipped uint64, err error) {
+	defer func() {
+		if state := recover(); state != nil {
+			err := log.Wrap(state.(error))
+			log.Panic(err)
+		}
+	}()
+
+	err = ir.fill()
+	if err == io.EOF {
+		return 0, io.EOF
+	} else if err != nil {
+		log.Panic(err)
+	}
+
+	currentBytesReadCount := uint64(math.Min(float64(len(ir.currentBlock)), float64(n)))
+	ir.currentBlock = ir.currentBlock[currentBytesReadCount:]
+
+	return currentBytesReadCount, nil
 }

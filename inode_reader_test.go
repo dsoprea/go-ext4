@@ -11,7 +11,7 @@ import (
 )
 
 func TestInodeReader_Read(t *testing.T) {
-	f, inode, err := GetTestFileInode()
+	f, inode, err := GetTestInode(TestFileInodeNumber)
 	log.PanicIf(err)
 
 	defer f.Close()
@@ -28,6 +28,35 @@ func TestInodeReader_Read(t *testing.T) {
 	log.PanicIf(err)
 
 	if bytes.Compare(actualBytes, expectedBytes) != 0 {
+		t.Fatalf("Bytes not read correctly.")
+	}
+}
+
+func TestInodeReader_Skip(t *testing.T) {
+	f, inode, err := GetTestInode(TestFileInodeNumber)
+	log.PanicIf(err)
+
+	defer f.Close()
+
+	en := NewExtentNavigatorWithReadSeeker(f, inode)
+
+	ir := NewInodeReader(en)
+
+	skipCount := uint64(1000)
+	for skipCount > 0 {
+		n, err := ir.Skip(skipCount)
+		log.PanicIf(err)
+
+		skipCount -= n
+	}
+
+	actualBytes, err := ioutil.ReadAll(ir)
+	log.PanicIf(err)
+
+	expectedBytes, err := ioutil.ReadFile("assets/thejungle.txt")
+	log.PanicIf(err)
+
+	if bytes.Compare(actualBytes, expectedBytes[1000:]) != 0 {
 		t.Fatalf("Bytes not read correctly.")
 	}
 }

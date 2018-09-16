@@ -10,7 +10,7 @@ import (
 )
 
 func TestExtentNavigator_Block(t *testing.T) {
-	f, inode, err := GetTestFileInode()
+	f, inode, err := GetTestInode(TestFileInodeNumber)
 	log.PanicIf(err)
 
 	defer f.Close()

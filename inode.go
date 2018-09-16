@@ -11,6 +11,20 @@ import (
 	"github.com/dsoprea/go-logging"
 )
 
+// Reserved inodes.
+const (
+	InodeDefectiveBlocks          = 1
+	InodeRootDirectory            = 2
+	InodeUserQuota                = 3
+	InodeGroupQuota               = 4
+	InodeBootLoader               = 5
+	InodeUndeleteDirectory        = 6
+	InodeReservedGroupDescriptors = 7
+	InodeJournal                  = 8
+	InodeExclude                  = 9
+	InodeReplica                  = 10
+)
+
 const (
 	Ext4NdirBlocks = 12
 	Ext4IndBlock   = Ext4NdirBlocks

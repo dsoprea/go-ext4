@@ -58,6 +58,10 @@ func (eln *ExtentLeafNode) String() string {
 	return fmt.Sprintf("ExtentLeafNode<FIRST-LBLOCK=(%d) LBLOCK-COUNT=(%d) START-PBLOCK=(%d)>", eln.EeFirstLogicalBlock, eln.EeLogicalBlockCount, eln.StartPhysicalBlock())
 }
 
+const (
+	Ext4ExtentChecksumTailSize = 4
+)
+
 type ExtentTail struct {
 	EbChecksum uint32
 }
@@ -93,7 +97,7 @@ func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {
 	pBlockOffset := offset % blockSize
 
 	inodeIblock := en.inode.Data().IBlock[:]
-	pBlockNumber, err := en.parseHeader(inodeIblock, lBlockNumber)
+	pBlockNumber, err := en.parseHeader(inodeIblock, lBlockNumber, false)
 	log.PanicIf(err)
 
 	// We'll return whichever data we got between the offset and the end of
@@ -106,7 +110,11 @@ func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {
 
 // parseHeader parses the extent header and then recursively processes the
 // array of index-nodes or array of leaf-nodes following it.
-func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (dataPBlock uint64, err error) {
+//
+// `hasTailChecksum` will be true for any of the arrays of extent structs that
+// we read after the first. Those are located in the inode's IBlock data,
+// which is already covered by the inode checksum.
+func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64, hasTailChecksum bool) (dataPBlock uint64, err error) {
 	defer func() {
 		if state := recover(); state != nil {
 			err := log.Wrap(state.(error))
@@ -134,6 +142,16 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (
 		err = binary.Read(b, binary.LittleEndian, &leafNodes)
 		log.PanicIf(err)
 
+		if hasTailChecksum == true {
+			et := new(ExtentTail)
+
+			err := binary.Read(b, binary.LittleEndian, et)
+			log.PanicIf(err)
+
+			// TODO(dustin): Finish implementing checksums.
+			et = et
+		}
+
 		// Forward through the leaf-nodes on this level until we find one that
 		// extends beyond the logical-block we wanted.
 
@@ -156,6 +174,16 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (
 
 		err = binary.Read(b, binary.LittleEndian, &indexNodes)
 		log.PanicIf(err)
+
+		if hasTailChecksum == true {
+			et := new(ExtentTail)
+
+			err := binary.Read(b, binary.LittleEndian, et)
+			log.PanicIf(err)
+
+			// TODO(dustin): Finish implementing checksums.
+			et = et
+		}
 
 		var hit *ExtentIndexNode
 		for i, ein := range indexNodes {
@@ -193,12 +221,12 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64) (
 
 		// Now, read the full data for our child extents.
 
-		childExtentsLength := ExtentHeaderSize + ExtentIndexAndLeafSize*nextEh.EhEntryCount
+		childExtentsLength := ExtentHeaderSize + ExtentIndexAndLeafSize*nextEh.EhEntryCount + Ext4ExtentChecksumTailSize
 
-		childExtents, err := sb.ReadPhysicalBlock(pBlock, uint64(childExtentsLength))
+		childExtentData, err := sb.ReadPhysicalBlock(pBlock, uint64(childExtentsLength))
 		log.PanicIf(err)
 
-		dataPBlock, err = en.parseHeader(childExtents, lBlock)
+		dataPBlock, err = en.parseHeader(childExtentData, lBlock, true)
 		log.PanicIf(err)
 
 		return dataPBlock, nil

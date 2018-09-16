@@ -2,9 +2,6 @@ package ext4
 
 import (
 	"bytes"
-	"io"
-	"os"
-	"path"
 	"testing"
 
 	"io/ioutil"
@@ -13,45 +10,26 @@ import (
 )
 
 func TestExtentNavigator_Block(t *testing.T) {
-	filepath := path.Join(assetsPath, "tiny.ext4")
-
-	f, err := os.Open(filepath)
+	f, inode, err := GetTestFileInode()
 	log.PanicIf(err)
 
 	defer f.Close()
 
-	_, err = f.Seek(Superblock0Offset, io.SeekStart)
-	log.PanicIf(err)
-
-	sb, err := NewSuperblockWithReader(f)
-	log.PanicIf(err)
-
-	bgdl, err := NewBlockGroupDescriptorListWithReadSeeker(f, sb)
-	log.PanicIf(err)
-
-	// inodeNumber := 2
-	inodeNumber := 12
-
-	bgd, err := bgdl.GetWithAbsoluteInode(inodeNumber)
-	log.PanicIf(err)
-
-	inode, err := NewInodeWithReadSeeker(bgd, f, inodeNumber)
-	log.PanicIf(err)
-
 	en := NewExtentNavigatorWithReadSeeker(f, inode)
 
-	expectedBytes, err := ioutil.ReadFile("assets/thejungle.txt")
-	log.PanicIf(err)
+	inodeSize := inode.Size()
+	actualBytes := make([]byte, inodeSize)
 
-	actualBytes := make([]byte, len(expectedBytes))
-
-	for offset := uint64(0); offset < inode.Size(); {
+	for offset := uint64(0); offset < inodeSize; {
 		data, err := en.Read(offset)
 		log.PanicIf(err)
 
 		copy(actualBytes[offset:], data)
 		offset += uint64(len(data))
 	}
+
+	expectedBytes, err := ioutil.ReadFile("assets/thejungle.txt")
+	log.PanicIf(err)
 
 	if bytes.Compare(actualBytes, expectedBytes) != 0 {
 		t.Fatalf("Bytes not read correctly.")

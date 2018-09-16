@@ -78,8 +78,8 @@ func NewExtentNavigatorWithReadSeeker(rs io.ReadSeeker, inode *Inode) *ExtentNav
 	}
 }
 
-// Block returns a physical-block number for a specific logical-block of data
-// for the principal inode.
+// Read returns the inode data from the given offset to the end of the logical
+// block that it's found in.
 //
 // "logical", meaning that (0) refers to the first block of this inode's data.
 func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {

@@ -300,25 +300,3 @@ func (inode *Inode) DumpFlags(includeFalses bool) {
 
 	fmt.Printf("\n")
 }
-
-// TODO(dustin): !! For experimentation/debugging.
-//
-// func (inode *Inode) DumpDirectory() {
-//
-// 	// Assert our present operating assumptions in order to stabilize development.
-//
-// 	if inode.Flag(InodeFlagIndex) != false {
-// 		// TODO(dustin): Might be present in large directories. We might need to implement both mechanisms (this and "linear directories").
-// 		log.Panicf("hash-tree directories not currently supported")
-// 	} else if inode.Flag(InodeFlagExtents) != true {
-// 		log.Panicf("only inodes having extent trees are supported")
-// 	}
-//
-// 	sb := inode.bgd.Superblock()
-//
-// 	filetypeInInode := sb.HasIncompatibleFeature(SbFeatureIncompatFiletype)
-// 	if filetypeInInode == false {
-// 		log.Panicf("only support inode that embed the filetype")
-// 	}
-//
-// }

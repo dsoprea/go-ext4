@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 
 	"encoding/binary"
 
@@ -105,7 +106,10 @@ func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {
 	rawPBlockData, err := sb.ReadPhysicalBlock(pBlockNumber, blockSize)
 	log.PanicIf(err)
 
-	return rawPBlockData[pBlockOffset:], nil
+	// If the inode's data stops mid-block, take just that amount.
+	dataLength := uint64(math.Min(float64(en.inode.Size()-offset), float64(blockSize-pBlockOffset)))
+
+	return rawPBlockData[pBlockOffset : pBlockOffset+dataLength], nil
 }
 
 // parseHeader parses the extent header and then recursively processes the

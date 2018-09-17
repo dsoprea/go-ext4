@@ -95,7 +95,7 @@ func (de *DirectoryEntry) IsSymbolicLink() bool {
 func (de *DirectoryEntry) TypeName() string {
 	name, found := FileTypeLookup[de.data.FileType]
 	if found == false {
-		log.Panicf("invalid type (%d) for inode (%d)", de.data.Inode)
+		log.Panicf("invalid type (%d) for inode (%d)", de.data.FileType, de.data.Inode)
 	}
 
 	return name

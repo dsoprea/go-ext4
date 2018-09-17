@@ -290,12 +290,40 @@ func NewSuperblockWithReader(rs io.ReadSeeker) (sb *Superblock, err error) {
 	// Assert our present operating assumptions in order to stabilize development.
 
 	if sb.HasIncompatibleFeature(SbFeatureIncompatMetaBg) == true {
-		log.Panicf("meta_bg not supported")
+		log.Panicf("meta_bg feature not supported")
 	} else if sb.HasIncompatibleFeature(SbFeatureIncompatFlexBg) == false {
 		log.Panicf("only filesystems with flex_bg are supported")
+	} else if sb.HasIncompatibleFeature(SbFeatureIncompatCompression) == true {
+		log.Panicf("only uncompressed filesystems are supported")
+	} else if sb.HasIncompatibleFeature(SbFeatureIncompatFiletype) == false {
+		log.Panicf("only directory-entries with a filetype are supported")
+	} else if sb.HasIncompatibleFeature(SbFeatureIncompatExtents) == false {
+		log.Panicf("only filesystems using extents are supported")
+	} else if sb.HasIncompatibleFeature(SbFeatureIncompatDirData) == true {
+		log.Panicf("dir-data is obscure and not supported")
+	} else if sb.HasIncompatibleFeature(SbFeatureIncompatJournalDev) == true {
+		log.Panicf("external journal devices are not supported")
+	} else if sb.HasIncompatibleFeature(SbFeatureIncompatLargeDir) == true {
+		log.Panicf("large-dirs are not supported")
+	} else if sb.HasIncompatibleFeature(SbFeatureIncompatInlineData) == true {
+		// Data may be stored directly in the inode for small files.
+
+		log.Panicf("inline-data not supported")
+	} else if sb.HasIncompatibleFeature(SbFeatureIncompatEncrypt) == true {
+		log.Panicf("encrypted filesystems not supported")
 	}
 
-	// TODO(dustin): !! Finish checking flags against our capabilities.
+	// SbFeatureIncompatRecover: Ignoring because it presumably doesn't matter
+	// when not writing.
+
+	// SbFeatureIncompatMmp: Ignoring because we're not involved in mounting
+	// (and not writing, besides).
+
+	// SbFeatureIncompatLargeExtendedAttributeValues: Ignoring because we don't
+	// currently read xattr's.
+
+	// SbFeatureIncompatCsumSeed: Ignoring because we're not concerned with
+	// mount semantics.
 
 	return sb, nil
 }

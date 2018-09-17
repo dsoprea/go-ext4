@@ -36,8 +36,8 @@ func TestNewInodeWithReadSeeker_RootInode(t *testing.T) {
 	inode, err := NewInodeWithReadSeeker(bgd, f, inodeNumber)
 	log.PanicIf(err)
 
-	actualTimestamp := inode.InodeChangeTime().String()
-	if actualTimestamp != "2018-09-08 02:08:45 -0400 EDT" {
+	actualTimestamp := inode.InodeChangeTime().UTC().String()
+	if actualTimestamp != "2018-09-08 06:08:45 +0000 UTC" {
 		t.Fatalf("InodeChangeTime() timestamp not correct: [%s]", actualTimestamp)
 	}
 }
@@ -67,11 +67,11 @@ func ExampleNewInodeWithReadSeeker_RootDirectoryInode() {
 	inode, err := NewInodeWithReadSeeker(bgd, f, inodeNumber)
 	log.PanicIf(err)
 
-	fmt.Println(inode.InodeChangeTime())
+	fmt.Println(inode.InodeChangeTime().UTC())
 
 	// Output:
 	//
-	// 2018-09-08 02:08:45 -0400 EDT
+	// 2018-09-08 06:08:45 +0000 UTC
 }
 
 func TestNewInodeWithReadSeeker_FileInode(t *testing.T) {
@@ -99,8 +99,8 @@ func TestNewInodeWithReadSeeker_FileInode(t *testing.T) {
 	inode, err := NewInodeWithReadSeeker(bgd, f, inodeNumber)
 	log.PanicIf(err)
 
-	actualTimestamp := inode.InodeChangeTime().String()
-	if actualTimestamp != "2018-09-08 02:08:45 -0400 EDT" {
+	actualTimestamp := inode.InodeChangeTime().UTC().String()
+	if actualTimestamp != "2018-09-08 06:08:45 +0000 UTC" {
 		t.Fatalf("InodeChangeTime() timestamp not correct: [%s]", actualTimestamp)
 	}
 }
@@ -130,9 +130,9 @@ func ExampleNewInodeWithReadSeeker_FileInode() {
 	inode, err := NewInodeWithReadSeeker(bgd, f, inodeNumber)
 	log.PanicIf(err)
 
-	fmt.Println(inode.InodeChangeTime())
+	fmt.Println(inode.InodeChangeTime().UTC())
 
 	// Output:
 	//
-	// 2018-09-08 02:08:45 -0400 EDT
+	// 2018-09-08 06:08:45 +0000 UTC
 }

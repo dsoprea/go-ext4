@@ -359,7 +359,7 @@ func (sb *Superblock) VolumeName() string {
 	return volumeName
 }
 
-func (sb *Superblock) Is64Bit() time.Time {
+func (sb *Superblock) Is64Bit() bool {
 	return sb.is64Bit
 }
 
@@ -464,11 +464,11 @@ func (sb *Superblock) Dump() {
 
 	fmt.Printf("\n")
 
-	sb.DumpCompatibilities(false)
+	sb.DumpFeatures(false)
 }
 
-func (sb *Superblock) DumpCompatibilities(includeFalses bool) {
-	fmt.Printf("Feature (Compatible)\n")
+func (sb *Superblock) DumpFeatures(includeFalses bool) {
+	fmt.Printf("Features (Compatible)\n")
 	fmt.Printf("\n")
 
 	for _, name := range SbFeatureCompatNames {
@@ -482,7 +482,7 @@ func (sb *Superblock) DumpCompatibilities(includeFalses bool) {
 
 	fmt.Printf("\n")
 
-	fmt.Printf("Feature (Read-Only Compatible)\n")
+	fmt.Printf("Features (Read-Only Compatible)\n")
 	fmt.Printf("\n")
 
 	for _, name := range SbFeatureRoCompatNames {
@@ -496,7 +496,7 @@ func (sb *Superblock) DumpCompatibilities(includeFalses bool) {
 
 	fmt.Printf("\n")
 
-	fmt.Printf("Feature (Incompatible)\n")
+	fmt.Printf("Features (Incompatible)\n")
 	fmt.Printf("\n")
 
 	for _, name := range SbFeatureIncompatNames {

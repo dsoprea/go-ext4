@@ -217,16 +217,11 @@ func NewInodeWithReadSeeker(bgd *BlockGroupDescriptor, rs io.ReadSeeker, absolut
 	// Assert our present operating assumptions in order to stabilize
 	// development.
 
-	if inode.Flag(InodeFlagIndex) != false {
+	if inode.Flag(InodeFlagIndex) == true {
 		// TODO(dustin): Might be present in large directories. We might need to implement both mechanisms (this and "linear directories").
 		log.Panicf("hash-tree directories not currently supported")
-	} else if inode.Flag(InodeFlagExtents) != true {
+	} else if inode.Flag(InodeFlagExtents) == false {
 		log.Panicf("only inodes having extent trees are supported")
-	}
-
-	filetypeInInode := sb.HasIncompatibleFeature(SbFeatureIncompatFiletype)
-	if filetypeInInode == false {
-		log.Panicf("only support inode that embed the filetype")
 	}
 
 	return inode, nil

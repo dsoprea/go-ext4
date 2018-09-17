@@ -58,7 +58,7 @@ func ExampleExtentNavigator_Read() {
 	}
 
 	// Take the first part, strip some nonprintable characters from the front,
-	// and normalize the newlines so that this example now and tests properly.
+	// and normalize the newlines so that this example tests properly.
 	firstPart := string(actualBytes[3:100])
 	firstPart = strings.Replace(firstPart, "\r\n", "\n", -1)
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strings"
 	"time"
 
 	"encoding/binary"
@@ -346,6 +347,13 @@ func (sb *Superblock) WriteTime() time.Time {
 
 func (sb *Superblock) LastCheckTime() time.Time {
 	return time.Unix(int64(sb.data.SLastcheck), 0)
+}
+
+func (sb *Superblock) VolumeName() string {
+	volumeName := string(sb.Data().SVolumeName[:])
+	volumeName = strings.TrimRight(volumeName, "\000")
+
+	return volumeName
 }
 
 func (sb *Superblock) HasCompatibleFeature(mask uint32) bool {

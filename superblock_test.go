@@ -2,6 +2,7 @@ package ext4
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -59,6 +60,27 @@ func TestNewSuperblockWithReader(t *testing.T) {
 	}
 }
 
+func ExampleNewSuperblockWithReader() {
+	filepath := path.Join(assetsPath, "tiny.ext4")
+
+	f, err := os.Open(filepath)
+	log.PanicIf(err)
+
+	defer f.Close()
+
+	// Skip over the boot-code at the front of the filesystem.
+	_, err = f.Seek(Superblock0Offset, io.SeekStart)
+	log.PanicIf(err)
+
+	sb, err := NewSuperblockWithReader(f)
+	log.PanicIf(err)
+
+	fmt.Println(sb.VolumeName())
+
+	// Output:
+	// tinyimage
+}
+
 func TestSuperblock_ReadPhysicalBlock(t *testing.T) {
 	filepath := path.Join(assetsPath, "tiny.ext4")
 
@@ -96,4 +118,27 @@ func TestSuperblock_ReadPhysicalBlock(t *testing.T) {
 	if reflect.DeepEqual(recoveredSbd, sb.Data()) == false {
 		t.Fatalf("Read block was not correct.")
 	}
+}
+
+func ExampleSuperblock_ReadPhysicalBlock() {
+	filepath := path.Join(assetsPath, "tiny.ext4")
+
+	f, err := os.Open(filepath)
+	log.PanicIf(err)
+
+	defer f.Close()
+
+	_, err = f.Seek(Superblock0Offset, io.SeekStart)
+	log.PanicIf(err)
+
+	sb, err := NewSuperblockWithReader(f)
+	log.PanicIf(err)
+
+	pBlock := uint64(sb.Data().SFirstDataBlock)
+	data, err := sb.ReadPhysicalBlock(pBlock, uint64(SuperblockSize))
+	log.PanicIf(err)
+
+	data = data
+
+	// Output:
 }

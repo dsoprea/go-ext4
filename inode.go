@@ -174,6 +174,10 @@ type Inode struct {
 	bgd  *BlockGroupDescriptor
 }
 
+func (inode *Inode) String() string {
+	return fmt.Sprintf("Inode<>")
+}
+
 func (inode *Inode) BlockGroupDescriptor() (bgd *BlockGroupDescriptor) {
 	return inode.bgd
 }

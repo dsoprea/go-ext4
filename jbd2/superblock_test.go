@@ -74,4 +74,6 @@ func TestNewJournalSuperblock(t *testing.T) {
 	} else if err != io.EOF {
 		log.Panic(err)
 	}
+
+	// TODO(dustin): Extract and test the data from the journal.
 }

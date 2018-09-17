@@ -200,8 +200,8 @@ func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64, h
 
 		if hit == nil {
 			log.Panicf("None of the index nodes at the current level of the "+
-				"extent-tree for inode (%d) had a logical-block less "+
-				"than what was requested (%d).", en.inode, lBlock)
+				"extent-tree for inode had a logical-block less "+
+				"than what was requested (%d): %s", lBlock, en.inode.String())
 		}
 
 		pBlock := hit.LeafPhysicalBlock()

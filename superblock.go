@@ -256,6 +256,7 @@ type SuperblockData struct {
 type Superblock struct {
 	data      *SuperblockData
 	blockSize uint32
+	is64Bit   bool
 	rs        io.ReadSeeker
 }
 
@@ -287,6 +288,8 @@ func NewSuperblockWithReader(rs io.ReadSeeker) (sb *Superblock, err error) {
 		blockSize: blockSize,
 		rs:        rs,
 	}
+
+	sb.is64Bit = sb.HasIncompatibleFeature(SbFeatureIncompat64bit)
 
 	// Assert our present operating assumptions in order to stabilize development.
 
@@ -356,6 +359,10 @@ func (sb *Superblock) VolumeName() string {
 	return volumeName
 }
 
+func (sb *Superblock) Is64Bit() time.Time {
+	return sb.is64Bit
+}
+
 func (sb *Superblock) HasCompatibleFeature(mask uint32) bool {
 	return (sb.data.SFeatureCompat & mask) > 0
 }
@@ -397,7 +404,11 @@ func (sb *Superblock) ReadPhysicalBlock(absoluteBlockNumber uint64, length uint6
 }
 
 func (sb *Superblock) BlockCount() uint64 {
-	return uint64(sb.data.SBlocksCountHi<<32) | uint64(sb.data.SBlocksCountLo)
+	if sb.is64Bit == true {
+		return uint64(sb.data.SBlocksCountHi<<32) | uint64(sb.data.SBlocksCountLo)
+	} else {
+		return uint64(sb.data.SBlocksCountLo)
+	}
 }
 
 func (sb *Superblock) BlockGroupCount() (blockGroups uint64) {

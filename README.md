@@ -14,4 +14,4 @@ Usage examples are [here](https://godoc.org/github.com/dsoprea/go-ext4#pkg-examp
 
 ## Notes
 
-- Modern filesystems are supported, including both 32-bit and 64-bit addresses. Obscure filesystem options may not be compatible. See the [compatibility assertions](https://github.com/dsoprea/go-ext4/blob/master/superblock.go) in `NewSuperblockWithReader`.
+- Modern filesystems are supported, including both 32-bit and 64-bit addresses (though 64-bit is not well-documented). Obscure filesystem options may not be compatible. See the [compatibility assertions](https://github.com/dsoprea/go-ext4/blob/master/superblock.go) in `NewSuperblockWithReader`.

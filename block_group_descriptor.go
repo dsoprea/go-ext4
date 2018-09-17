@@ -118,9 +118,17 @@ func (bgd *BlockGroupDescriptor) IsInodeTableZeroed() bool {
 
 // InodeTableBlock returns the absolute block number of the inode-table.
 func (bgd *BlockGroupDescriptor) InodeTableBlock() uint64 {
-	return uint64(bgd.data.BgInodeTableHi<<32) | uint64(bgd.data.BgInodeTableLo)
+	if bgd.sb.Is64Bit() == true {
+		return uint64(bgd.data.BgInodeTableHi<<32) | uint64(bgd.data.BgInodeTableLo)
+	} else {
+		return uint64(bgd.data.BgInodeTableLo)
+	}
 }
 
 func (bgd *BlockGroupDescriptor) InodeBitmapBlock() uint64 {
-	return uint64(bgd.data.BgInodeBitmapHi<<32) | uint64(bgd.data.BgInodeBitmapLo)
+	if bgd.sb.Is64Bit() == true {
+		return uint64(bgd.data.BgInodeBitmapHi<<32) | uint64(bgd.data.BgInodeBitmapLo)
+	} else {
+		return uint64(bgd.data.BgInodeBitmapLo)
+	}
 }

@@ -43,8 +43,8 @@ func TestNewJournalSuperblock_NextBlock(t *testing.T) {
 
 	tag := jdb.Tags[0]
 
-	if tag.String() != "JournalBlockTag<TBLOCKNR=(74) TCHECKSUM=(0) TFLAGS=(8) UUID=[00000000000000000000000000000000]>" {
-		t.Fatalf("descriptor tag not as expected: [%s]", tag)
+	if tag.String() != "JournalBlockTag32<TBLOCKNR=(74) TCHECKSUM=(0) TFLAGS=(8) UUID=[00000000000000000000000000000000]>" {
+		t.Fatalf("descriptor tag not as expected: [%s]", tag.String())
 	}
 
 	// Check second block.
@@ -54,7 +54,7 @@ func TestNewJournalSuperblock_NextBlock(t *testing.T) {
 
 	if jb.Type() != BtBlockCommitRecord {
 		t.Fatalf("Expected commit-block for second block.")
-	} else if jb.String() != "CommitBlock<HChksumType=(0) HChksumSize=(0) CommitTime=[2018-09-17 23:34:36.58801818 -0400 EDT]>" {
+	} else if jb.String() != "CommitBlock<HChksumType=(0) HChksumSize=(0) CommitTime=[2018-09-18 03:34:36.58801818 +0000 UTC]>" {
 		t.Fatalf("commit-block not correct in second block: [%s]", jb.String())
 	}
 
@@ -107,7 +107,7 @@ func ExampleNewJournalSuperblock_NextBlock_Blocks() {
 	// Output:
 	//
 	// DescriptorBlock<TAGS=(1) DATA-LENGTH=(1024)>
-	// CommitBlock<HChksumType=(0) HChksumSize=(0) CommitTime=[2018-09-17 23:34:36.58801818 -0400 EDT]>
+	// CommitBlock<HChksumType=(0) HChksumSize=(0) CommitTime=[2018-09-18 03:34:36.58801818 +0000 UTC]>
 	// DescriptorBlock<TAGS=(6) DATA-LENGTH=(1024)>
 }
 
@@ -145,14 +145,14 @@ func ExampleNewJournalSuperblock_NextBlock_Descriptors() {
 	//
 	// DescriptorBlock<TAGS=(1) DATA-LENGTH=(1024)>
 	//
-	//   TAG(0): JournalBlockTag<TBLOCKNR=(74) TCHECKSUM=(0) TFLAGS=(8) UUID=[00000000000000000000000000000000]>
+	//   TAG(0): JournalBlockTag32<TBLOCKNR=(74) TCHECKSUM=(0) TFLAGS=(8) UUID=[00000000000000000000000000000000]>
 	//
 	// DescriptorBlock<TAGS=(6) DATA-LENGTH=(1024)>
 	//
-	//   TAG(0): JournalBlockTag<TBLOCKNR=(58) TCHECKSUM=(0) TFLAGS=(0) UUID=[00000000000000000000000000000000]>
-	//   TAG(1): JournalBlockTag<TBLOCKNR=(2) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
-	//   TAG(2): JournalBlockTag<TBLOCKNR=(75) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
-	//   TAG(3): JournalBlockTag<TBLOCKNR=(74) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
-	//   TAG(4): JournalBlockTag<TBLOCKNR=(44) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
-	//   TAG(5): JournalBlockTag<TBLOCKNR=(43) TCHECKSUM=(0) TFLAGS=(10) UUID=[00000000000000000000000000000000]>
+	//   TAG(0): JournalBlockTag32<TBLOCKNR=(58) TCHECKSUM=(0) TFLAGS=(0) UUID=[00000000000000000000000000000000]>
+	//   TAG(1): JournalBlockTag32<TBLOCKNR=(2) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
+	//   TAG(2): JournalBlockTag32<TBLOCKNR=(75) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
+	//   TAG(3): JournalBlockTag32<TBLOCKNR=(74) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
+	//   TAG(4): JournalBlockTag32<TBLOCKNR=(44) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
+	//   TAG(5): JournalBlockTag32<TBLOCKNR=(43) TCHECKSUM=(0) TFLAGS=(10) UUID=[00000000000000000000000000000000]>
 }

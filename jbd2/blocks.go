@@ -30,9 +30,9 @@ const (
 	JbtfLastTag               = uint16(0x8) // This is the last tag in this descriptor block.
 )
 
-// JournalBlockTagNoCsumV3 (journal_block_tag_s struct) is a subelement of the
+// JournalBlockTag32NoCsumV3 (journal_block_tag_s struct) is a subelement of the
 // descriptor block.
-type JournalBlockTagNoCsumV3 struct {
+type JournalBlockTag32NoCsumV3 struct {
 	// 0x0
 	TBlocknr uint32 // Lower 32-bits of the location of where the corresponding data block should end up on disk.
 
@@ -50,20 +50,20 @@ type JournalBlockTagNoCsumV3 struct {
 	Uuid [16]byte //  A UUID to go with this tag. This field appears to be copied from the j_uuid field in struct journal_s, but only tune2fs touches that field.
 }
 
-func (jbtnc3 JournalBlockTagNoCsumV3) String() string {
-	return fmt.Sprintf("JournalBlockTag<TBLOCKNR=(%d) TCHECKSUM=(%d) TFLAGS=(%d) UUID=[%032x]>", jbtnc3.TBlocknr, jbtnc3.TChecksum, jbtnc3.TFlags, jbtnc3.Uuid)
+func (jbtnc3 *JournalBlockTag32NoCsumV3) String() string {
+	return fmt.Sprintf("JournalBlockTag32<TBLOCKNR=(%d) TCHECKSUM=(%d) TFLAGS=(%d) UUID=[%032x]>", jbtnc3.TBlocknr, jbtnc3.TChecksum, jbtnc3.TFlags, jbtnc3.Uuid)
 }
 
 // JournalDescriptorBlock is a top-level journal block-type that describes
 // where the data is supposed to go on disk.
 type JournalDescriptorBlock struct {
-	Tags            []JournalBlockTagNoCsumV3
+	Tags            []JournalBlockTag32NoCsumV3
 	transactionData []byte
 
 	JournalCommonBlockType
 }
 
-func (jdb *JournalDescriptorBlock) Type() uint32 {
+func (*JournalDescriptorBlock) Type() uint32 {
 	return BtDescriptor
 }
 
@@ -80,7 +80,7 @@ func (jdb *JournalDescriptorBlock) Dump() {
 	fmt.Printf("\n")
 
 	for i, jbtnc3 := range jdb.Tags {
-		fmt.Printf("  TAG(%d): %s\n", i, jbtnc3)
+		fmt.Printf("  TAG(%d): %s\n", i, jbtnc3.String())
 	}
 
 	fmt.Printf("\n")
@@ -118,7 +118,7 @@ func (jcb *JournalCommitBlock) Data() *JournalCommitBlockData {
 	return jcb.data
 }
 
-func (jcb *JournalCommitBlock) Type() uint32 {
+func (*JournalCommitBlock) Type() uint32 {
 	return BtBlockCommitRecord
 }
 
@@ -127,5 +127,33 @@ func (jcb *JournalCommitBlock) CommitTime() time.Time {
 }
 
 func (jcb *JournalCommitBlock) String() string {
-	return fmt.Sprintf("CommitBlock<HChksumType=(%d) HChksumSize=(%d) CommitTime=[%s]>", jcb.data.HChksumType, jcb.data.HChksumSize, jcb.CommitTime())
+	return fmt.Sprintf("CommitBlock<HChksumType=(%d) HChksumSize=(%d) CommitTime=[%s]>", jcb.data.HChksumType, jcb.data.HChksumSize, jcb.CommitTime().UTC())
+}
+
+// JournalRevokeBlock32Data (jbd2_journal_revoke_header_s struct) is top-level
+// journal block-type.
+type JournalRevokeBlock32Data struct {
+	// 0xC
+	RCount uint32 // Number of bytes used in this block.
+
+	// 0x10
+	Blocks []uint32 // Blocks to revoke.
+}
+
+type JournalRevokeBlock struct {
+	data *JournalRevokeBlock32Data
+
+	JournalCommonBlockType
+}
+
+func (jrb *JournalRevokeBlock) Data() *JournalRevokeBlock32Data {
+	return jrb.data
+}
+
+func (*JournalRevokeBlock) Type() uint32 {
+	return BtBlockRevocationRecord
+}
+
+func (jrb *JournalRevokeBlock) String() string {
+	return fmt.Sprintf("JournalRevokeBlock<RCOUNT=(%d) BLOCKS=(%d)>", jrb.data.RCount, len(jrb.data.Blocks))
 }

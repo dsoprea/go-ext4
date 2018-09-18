@@ -318,12 +318,12 @@ func (jsb *JournalSuperblock) NextBlock(r io.Reader) (jb JournalBlock, err error
 		jdb := new(JournalDescriptorBlock)
 		jdb.SetHeader(jh)
 
-		jdb.Tags = make([]JournalBlockTagNoCsumV3, 0)
+		jdb.Tags = make([]JournalBlockTag32NoCsumV3, 0)
 
 		hasLast := false
 		i := 0
 		for remainingBytes > 0 {
-			jbtnc3 := JournalBlockTagNoCsumV3{}
+			jbtnc3 := JournalBlockTag32NoCsumV3{}
 
 			err = binary.Read(remainingReader, binary.BigEndian, &jbtnc3.TBlocknr)
 			log.PanicIf(err)
@@ -383,11 +383,20 @@ func (jsb *JournalSuperblock) NextBlock(r io.Reader) (jb JournalBlock, err error
 
 		return jcb, nil
 	} else if jh.HBlocktype == BtBlockRevocationRecord {
-		fmt.Printf("BLOCK REVOCATION\n")
+		jrbd := new(JournalRevokeBlock32Data)
 
-		// TODO(dustin): !! Finish.
+		err := binary.Read(remainingReader, binary.BigEndian, jrbd)
+		log.PanicIf(err)
+
+		jrb := &JournalRevokeBlock{
+			data: jrbd,
+		}
+
+		jrb.SetHeader(jh)
+
+		return jrb, nil
 	}
 
-	// log.Panicf("block-type (%d) not handled", jh.HBlocktype)
+	log.Panicf("block-type (%d) not handled", jh.HBlocktype)
 	return nil, nil
 }

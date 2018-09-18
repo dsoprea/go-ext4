@@ -3,6 +3,7 @@ package ext4
 import (
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"reflect"
 	"sort"
@@ -71,12 +72,22 @@ func ExampleDirectoryWalk_Next() {
 
 	filepath := path.Join(assetsPath, "hierarchy_32.ext4")
 
-	f, inode, err := GetInode(filepath, inodeNumber)
+	f, err := os.Open(filepath)
 	log.PanicIf(err)
 
 	defer f.Close()
 
-	bgd := inode.BlockGroupDescriptor()
+	_, err = f.Seek(Superblock0Offset, io.SeekStart)
+	log.PanicIf(err)
+
+	sb, err := NewSuperblockWithReader(f)
+	log.PanicIf(err)
+
+	bgdl, err := NewBlockGroupDescriptorListWithReadSeeker(f, sb)
+	log.PanicIf(err)
+
+	bgd, err := bgdl.GetWithAbsoluteInode(inodeNumber)
+	log.PanicIf(err)
 
 	dw, err := NewDirectoryWalk(f, bgd, inodeNumber)
 	log.PanicIf(err)

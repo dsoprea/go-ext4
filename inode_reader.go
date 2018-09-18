@@ -24,6 +24,10 @@ func NewInodeReader(en *ExtentNavigator) *InodeReader {
 	}
 }
 
+func (ir *InodeReader) Offset() uint64 {
+	return ir.bytesRead
+}
+
 func (ir *InodeReader) fill() (err error) {
 	defer func() {
 		if state := recover(); state != nil {

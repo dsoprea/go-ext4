@@ -82,6 +82,7 @@ const (
 	JccCrc32c = uint8(4)
 )
 
+// JournalHeader (journal_header_s) is at the beginning of every block.
 type JournalHeader struct {
 	HMagic     uint32
 	HBlocktype uint32
@@ -89,7 +90,7 @@ type JournalHeader struct {
 }
 
 func (jh JournalHeader) String() string {
-	return fmt.Sprintf("JournalHeader<BLOCK-TYPE=[%s]>", BlocktypeLookup[jh.HBlocktype])
+	return fmt.Sprintf("JournalHeader<MAGIC=[%08x] BLOCK-TYPE=[%s] SEQ=(%d)>", jh.HMagic, BlocktypeLookup[jh.HBlocktype], jh.HSequence)
 }
 
 func (jh *JournalHeader) Dump() {
@@ -244,51 +245,29 @@ func (jsb *JournalSuperblock) Dump() {
 	fmt.Printf("SBlocksize: (%d)\n", jsb.data.SBlocksize)
 	fmt.Printf("SMaxLen: (%d)\n", jsb.data.SMaxlen)
 	fmt.Printf("SFirst: (%d)\n", jsb.data.SFirst)
+	fmt.Printf("SSequence: (%d)\n", jsb.data.SSequence)
+	fmt.Printf("SStart: (%d)\n", jsb.data.SStart)
+	fmt.Printf("SErrno: (%d)\n", jsb.data.SErrno)
+	fmt.Printf("SFeatureCompat: (%d)\n", jsb.data.SFeatureCompat)
+	fmt.Printf("SFeatureIncompat: (%d)\n", jsb.data.SFeatureIncompat)
+	fmt.Printf("SFeatureRoCompat: (%d)\n", jsb.data.SFeatureRoCompat)
+	fmt.Printf("SUuid: (%032x)\n", jsb.data.SUuid)
 
-	// TODO(dustin): !! Finish printing remaining data.
+	fmt.Printf("SNrUsers: (%d)\n", jsb.data.SNrUsers)
+	fmt.Printf("SDynsuper: (%d)\n", jsb.data.SDynsuper)
+	fmt.Printf("SMaxTransaction: (%d)\n", jsb.data.SMaxTransaction)
+	fmt.Printf("SMaxTransData: (%d)\n", jsb.data.SMaxTransData)
+
+	fmt.Printf("SChecksumType: (%d)\n", jsb.data.SChecksumType)
+	fmt.Printf("SChecksum: (%d)\n", jsb.data.SChecksum)
 
 	fmt.Printf("\n")
 }
 
 type JournalBlock interface {
 	Type() uint32
-}
-
-const (
-	JbtfDataMatchesMagicBytes = uint16(0x1) // On-disk block is escaped. The first four bytes of the data block just happened to match the jbd2 magic number.
-	JbtfSameUuidAsPrevious    = uint16(0x2) // This block has the same UUID as previous, therefore the UUID field is omitted.
-	JbtfDeleted               = uint16(0x4) // The data block was deleted by the transaction. (Not used?)
-	JbtfLastTag               = uint16(0x8) // This is the last tag in this descriptor block.
-)
-
-type JournalBlockTagNoCsumV3 struct {
-	// 0x0
-	TBlocknr uint32 // Lower 32-bits of the location of where the corresponding data block should end up on disk.
-
-	// 0x4
-	TChecksum uint16 // Checksum of the journal UUID, the sequence number, and the data block. Note that only the lower 16 bits are stored.
-
-	// 0x6
-	TFlags uint16 // Flags that go with the descriptor. See the table jbd2_tag_flags for more info.
-
-	// Only present if the super block indicates support for 64-bit block numbers.
-	// TBlocknrHigh uint32 //  Upper 32-bits of the location of where the corresponding data block should end up on disk.
-
-	// 0x8 or 0xC
-	// This field appears to be open coded. It always comes at the end of the tag, after t_flags or t_blocknr_high. This field is not present if the “same UUID” flag is set.
-	Uuid [16]byte //  A UUID to go with this tag. This field appears to be copied from the j_uuid field in struct journal_s, but only tune2fs touches that field.
-}
-
-func (jbtnc3 JournalBlockTagNoCsumV3) String() string {
-	return fmt.Sprintf("JournalBlockTag<TBLOCKNR=(%d) TCHECKSUM=(%d) TFLAGS=(%d) UUID=[%032x]>", jbtnc3.TBlocknr, jbtnc3.TChecksum, jbtnc3.TFlags, jbtnc3.Uuid)
-}
-
-type JournalDescriptorBlock struct {
-	Tags []JournalBlockTagNoCsumV3
-}
-
-func (jdb *JournalDescriptorBlock) Type() uint32 {
-	return BtDescriptor
+	String() string
+	Header() *JournalHeader
 }
 
 func (jsb *JournalSuperblock) NextBlock(r io.Reader) (jb JournalBlock, err error) {
@@ -299,6 +278,11 @@ func (jsb *JournalSuperblock) NextBlock(r io.Reader) (jb JournalBlock, err error
 		}
 	}()
 
+	// Find the next populated block. We've observed sparsity with the populated
+	// ones.
+
+	blockSize := int(jsb.data.SBlocksize)
+
 	if jsb.currentBlock >= int(jsb.data.SMaxlen) {
 		return nil, io.EOF
 	}
@@ -308,32 +292,36 @@ func (jsb *JournalSuperblock) NextBlock(r io.Reader) (jb JournalBlock, err error
 	err = binary.Read(r, binary.BigEndian, jh)
 	log.PanicIf(err)
 
-	if jh.HMagic == 0 {
+	remainingBytes := blockSize - JournalHeaderSize
+	buffer := make([]byte, remainingBytes)
+
+	err = ReadExactly(r, buffer)
+	log.PanicIf(err)
+
+	jsb.currentBlock++
+
+	if jh.HMagic != JournalBlockHeaderMagicBytes {
+		// There's no block-type connoting terminating, and the magic-bytes
+		// seem to potentially be non-zero even though everything else looks
+		// good. Therefore, we're just going to iterate until the magic-bytes
+		// are no longer correct.
+
+		// log.Panicf("next block header magic-bytes not correct: %08x", jh.HMagic)
 		return nil, io.EOF
-	} else if jh.HMagic != JournalBlockHeaderMagicBytes {
-		log.Panicf("next block header magic-bytes not correct: %08x", jh.HMagic)
 	} else if jh.HBlocktype == BtJournalSuperblockV1 || jh.HBlocktype == BtJournalSuperblockV2 {
 		log.Panicf("encountered more than one journal superblock")
-	}
-
-	remainingBytes := int(jsb.data.SBlocksize) - JournalHeaderSize
-	needBytes := remainingBytes
-	buffer := make([]byte, needBytes)
-	for offset := 0; needBytes > 0; {
-		n, err := r.Read(buffer[offset:])
-		log.PanicIf(err)
-
-		offset += n
-		needBytes -= n
 	}
 
 	remainingReader := bytes.NewBuffer(buffer)
 
 	if jh.HBlocktype == BtDescriptor {
 		jdb := new(JournalDescriptorBlock)
+		jdb.SetHeader(jh)
+
 		jdb.Tags = make([]JournalBlockTagNoCsumV3, 0)
 
 		hasLast := false
+		i := 0
 		for remainingBytes > 0 {
 			jbtnc3 := JournalBlockTagNoCsumV3{}
 
@@ -348,7 +336,7 @@ func (jsb *JournalSuperblock) NextBlock(r io.Reader) (jb JournalBlock, err error
 
 			remainingBytes -= 8
 
-			if (jbtnc3.TFlags & JbtfSameUuidAsPrevious) > 0 {
+			if (jbtnc3.TFlags & JbtfSameUuidAsPrevious) == 0 {
 				err = binary.Read(remainingReader, binary.BigEndian, &jbtnc3.Uuid)
 				log.PanicIf(err)
 
@@ -357,23 +345,49 @@ func (jsb *JournalSuperblock) NextBlock(r io.Reader) (jb JournalBlock, err error
 
 			jdb.Tags = append(jdb.Tags, jbtnc3)
 
+			// TODO(dustin): !! We're not sure why the commit-tag record has a target block-number on it.
+			// TODO(dustin): !! Why don't we see the associated data?
 			if (jbtnc3.TFlags & JbtfLastTag) > 0 {
 				hasLast = true
 				break
 			}
+
+			i++
 		}
 
 		if hasLast == false {
 			log.Panicf("journal descriptor tag blocks not terminated")
 		}
 
+		// The next block will have the actual data.
+
+		transactionData := make([]byte, blockSize)
+
+		err = ReadExactly(r, transactionData)
+		log.PanicIf(err)
+
+		jdb.SetTransactionData(transactionData)
+
 		return jdb, nil
 	} else if jh.HBlocktype == BtBlockCommitRecord {
-		// TODO(dustin): !! Finish.
+		jcbd := new(JournalCommitBlockData)
+
+		err := binary.Read(remainingReader, binary.BigEndian, jcbd)
+		log.PanicIf(err)
+
+		jcb := &JournalCommitBlock{
+			data: jcbd,
+		}
+
+		jcb.SetHeader(jh)
+
+		return jcb, nil
 	} else if jh.HBlocktype == BtBlockRevocationRecord {
+		fmt.Printf("BLOCK REVOCATION\n")
+
 		// TODO(dustin): !! Finish.
 	}
 
-	log.Panicf("block-type (%d) not handled", jh.HBlocktype)
+	// log.Panicf("block-type (%d) not handled", jh.HBlocktype)
 	return nil, nil
 }

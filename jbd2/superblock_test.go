@@ -1,8 +1,8 @@
 package jbd2
 
 import (
+	"fmt"
 	"io"
-	"os"
 	"path"
 	"testing"
 
@@ -10,39 +10,10 @@ import (
 	"github.com/dsoprea/go-logging"
 )
 
-func TestNewJournalSuperblock(t *testing.T) {
+func TestNewJournalSuperblock_NextBlock(t *testing.T) {
 	filepath := path.Join(assetsPath, "journal.ext4")
 
-	// Load the filesystem.
-
-	f, err := os.Open(filepath)
-	log.PanicIf(err)
-
-	defer f.Close()
-
-	_, err = f.Seek(ext4.Superblock0Offset, io.SeekStart)
-	log.PanicIf(err)
-
-	sb, err := ext4.NewSuperblockWithReader(f)
-	log.PanicIf(err)
-
-	if sb.HasCompatibleFeature(ext4.SbFeatureCompatHasJournal) == false {
-		t.Fatalf("filesystem does not have a journal.")
-	}
-
-	inodeNumber := int(sb.Data().SJournalInum)
-
-	if inodeNumber != ext4.InodeJournal {
-		t.Fatalf("inode number different than expected: (%d) != (%d)", inodeNumber, ext4.InodeJournal)
-	}
-
-	bgdl, err := ext4.NewBlockGroupDescriptorListWithReadSeeker(f, sb)
-	log.PanicIf(err)
-
-	bgd, err := bgdl.GetWithAbsoluteInode(inodeNumber)
-	log.PanicIf(err)
-
-	inode, err := ext4.NewInodeWithReadSeeker(bgd, f, inodeNumber)
+	f, inode, err := GetJournalInode(filepath)
 	log.PanicIf(err)
 
 	// Read the journal data.
@@ -53,8 +24,16 @@ func TestNewJournalSuperblock(t *testing.T) {
 	jsb, err := NewJournalSuperblock(ir)
 	log.PanicIf(err)
 
+	// Check first block.
+
 	jb, err := jsb.NextBlock(ir)
 	log.PanicIf(err)
+
+	if jb.Type() != BtDescriptor {
+		t.Fatalf("Expected descriptor for first block.")
+	} else if jb.String() != "DescriptorBlock<TAGS=(1) DATA-LENGTH=(1024)>" {
+		t.Fatalf("Descriptor not correct in first block: [%s]", jb.String())
+	}
 
 	jdb := jb.(*JournalDescriptorBlock)
 
@@ -68,12 +47,112 @@ func TestNewJournalSuperblock(t *testing.T) {
 		t.Fatalf("descriptor tag not as expected: [%s]", tag)
 	}
 
+	// Check second block.
+
+	jb, err = jsb.NextBlock(ir)
+	log.PanicIf(err)
+
+	if jb.Type() != BtBlockCommitRecord {
+		t.Fatalf("Expected commit-block for second block.")
+	} else if jb.String() != "CommitBlock<HChksumType=(0) HChksumSize=(0) CommitTime=[2018-09-17 23:34:36.58801818 -0400 EDT]>" {
+		t.Fatalf("commit-block not correct in second block: [%s]", jb.String())
+	}
+
+	// Check third block.
+
+	jb, err = jsb.NextBlock(ir)
+	log.PanicIf(err)
+
+	if jb.Type() != BtDescriptor {
+		t.Fatalf("Expected descriptor for third block.")
+	} else if jb.String() != "DescriptorBlock<TAGS=(6) DATA-LENGTH=(1024)>" {
+		t.Fatalf("Descriptor not correct in third block: [%s]", jb.String())
+	}
+
+	// Check that there are no more blocks.
+
 	_, err = jsb.NextBlock(ir)
 	if err == nil {
 		t.Fatalf("expected EOF for no more journal blocks")
 	} else if err != io.EOF {
 		log.Panic(err)
 	}
+}
 
-	// TODO(dustin): Extract and test the data from the journal.
+func ExampleNewJournalSuperblock_NextBlock_Blocks() {
+	filepath := path.Join(assetsPath, "journal.ext4")
+
+	f, inode, err := GetJournalInode(filepath)
+	log.PanicIf(err)
+
+	en := ext4.NewExtentNavigatorWithReadSeeker(f, inode)
+	ir := ext4.NewInodeReader(en)
+
+	jsb, err := NewJournalSuperblock(ir)
+	log.PanicIf(err)
+
+	for {
+		jb, err := jsb.NextBlock(ir)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+
+			log.Panic(err)
+		}
+
+		fmt.Printf("%s\n", jb)
+	}
+
+	// Output:
+	//
+	// DescriptorBlock<TAGS=(1) DATA-LENGTH=(1024)>
+	// CommitBlock<HChksumType=(0) HChksumSize=(0) CommitTime=[2018-09-17 23:34:36.58801818 -0400 EDT]>
+	// DescriptorBlock<TAGS=(6) DATA-LENGTH=(1024)>
+}
+
+func ExampleNewJournalSuperblock_NextBlock_Descriptors() {
+	filepath := path.Join(assetsPath, "journal.ext4")
+
+	f, inode, err := GetJournalInode(filepath)
+	log.PanicIf(err)
+
+	en := ext4.NewExtentNavigatorWithReadSeeker(f, inode)
+	ir := ext4.NewInodeReader(en)
+
+	jsb, err := NewJournalSuperblock(ir)
+	log.PanicIf(err)
+
+	for {
+		jb, err := jsb.NextBlock(ir)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+
+			log.Panic(err)
+		}
+
+		if jb.Type() != BtDescriptor {
+			continue
+		}
+
+		jdb := jb.(*JournalDescriptorBlock)
+		jdb.Dump()
+	}
+
+	// Output:
+	//
+	// DescriptorBlock<TAGS=(1) DATA-LENGTH=(1024)>
+	//
+	//   TAG(0): JournalBlockTag<TBLOCKNR=(74) TCHECKSUM=(0) TFLAGS=(8) UUID=[00000000000000000000000000000000]>
+	//
+	// DescriptorBlock<TAGS=(6) DATA-LENGTH=(1024)>
+	//
+	//   TAG(0): JournalBlockTag<TBLOCKNR=(58) TCHECKSUM=(0) TFLAGS=(0) UUID=[00000000000000000000000000000000]>
+	//   TAG(1): JournalBlockTag<TBLOCKNR=(2) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
+	//   TAG(2): JournalBlockTag<TBLOCKNR=(75) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
+	//   TAG(3): JournalBlockTag<TBLOCKNR=(74) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
+	//   TAG(4): JournalBlockTag<TBLOCKNR=(44) TCHECKSUM=(0) TFLAGS=(2) UUID=[00000000000000000000000000000000]>
+	//   TAG(5): JournalBlockTag<TBLOCKNR=(43) TCHECKSUM=(0) TFLAGS=(10) UUID=[00000000000000000000000000000000]>
 }

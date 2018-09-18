@@ -85,3 +85,8 @@ This example and others are documented [here](https://godoc.org/github.com/dsopr
 
 - Modern filesystems are supported, including both 32-bit and 64-bit addressing. Obscure filesystem options may not be compatible. See the [compatibility assertions](https://github.com/dsoprea/go-ext4/blob/master/superblock.go) in `NewSuperblockWithReader`.
   - 64-bit addressing should be fine, as the high addressing should likely be zero when 64-bit addressing is turned-off (which is primary what our unit-tests test with). However, the available documentation is limited on the subject. It's specifically not clear which of the high/low addressing should be used or ignored when 64-bit addressing is turned-off.
+
+
+## To Do
+
+- Finish implementing checksum calculation and validation. Currently all checksums are readable but with no additional functionality.

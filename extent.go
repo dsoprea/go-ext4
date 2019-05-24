@@ -37,7 +37,7 @@ type ExtentIndexNode struct {
 }
 
 func (ein *ExtentIndexNode) LeafPhysicalBlock() uint64 {
-	return uint64(ein.EiLeafPhysicalBlockHi<<32) | uint64(ein.EiLeafPhysicalBlockLo)
+	return (uint64(ein.EiLeafPhysicalBlockHi) << 32) | uint64(ein.EiLeafPhysicalBlockLo)
 }
 
 func (ein *ExtentIndexNode) String() string {
@@ -52,7 +52,7 @@ type ExtentLeafNode struct {
 }
 
 func (eln *ExtentLeafNode) StartPhysicalBlock() uint64 {
-	return uint64(eln.EeStartPhysicalBlockHi<<32) | uint64(eln.EeStartPhysicalBlockLo)
+	return (uint64(eln.EeStartPhysicalBlockHi) << 32) | uint64(eln.EeStartPhysicalBlockLo)
 }
 
 func (eln *ExtentLeafNode) String() string {

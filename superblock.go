@@ -405,7 +405,7 @@ func (sb *Superblock) ReadPhysicalBlock(absoluteBlockNumber uint64, length uint6
 
 func (sb *Superblock) BlockCount() uint64 {
 	if sb.is64Bit == true {
-		return uint64(sb.data.SBlocksCountHi<<32) | uint64(sb.data.SBlocksCountLo)
+		return (uint64(sb.data.SBlocksCountHi) << 32) | uint64(sb.data.SBlocksCountLo)
 	} else {
 		return uint64(sb.data.SBlocksCountLo)
 	}

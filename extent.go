@@ -86,8 +86,7 @@ func NewExtentNavigatorWithReadSeeker(rs io.ReadSeeker, inode *Inode) *ExtentNav
 func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 
@@ -121,8 +120,7 @@ func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {
 func (en *ExtentNavigator) parseHeader(extentHeaderData []byte, lBlock uint64, hasTailChecksum bool) (dataPBlock uint64, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

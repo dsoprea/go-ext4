@@ -267,8 +267,7 @@ func (sb *Superblock) Data() *SuperblockData {
 func NewSuperblockWithReader(rs io.ReadSeeker) (sb *Superblock, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

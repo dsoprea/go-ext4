@@ -18,8 +18,7 @@ var (
 func GetJournalInode(filepath string) (f *os.File, inode *ext4.Inode, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

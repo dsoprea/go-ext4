@@ -23,8 +23,7 @@ type DirectoryWalk struct {
 func NewDirectoryWalk(rs io.ReadSeeker, bgd *BlockGroupDescriptor, rootInodeNumber int) (dw *DirectoryWalk, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 
@@ -49,8 +48,7 @@ func NewDirectoryWalk(rs io.ReadSeeker, bgd *BlockGroupDescriptor, rootInodeNumb
 func (dw *DirectoryWalk) openInode(inodeNumber int) (inode *Inode, db *DirectoryBrowser, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 
@@ -68,8 +66,7 @@ func (dw *DirectoryWalk) openInode(inodeNumber int) (inode *Inode, db *Directory
 func (dw *DirectoryWalk) Next() (fullPath string, de *DirectoryEntry, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

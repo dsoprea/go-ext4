@@ -19,8 +19,7 @@ func DumpBytes(data []byte) {
 func ReadExactly(r io.Reader, buffer []byte) (err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

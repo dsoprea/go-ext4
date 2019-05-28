@@ -18,8 +18,7 @@ type BlockGroupDescriptorList struct {
 func NewBlockGroupDescriptorListWithReadSeeker(rs io.ReadSeeker, sb *Superblock) (bgdl *BlockGroupDescriptorList, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 
@@ -53,8 +52,7 @@ func NewBlockGroupDescriptorListWithReadSeeker(rs io.ReadSeeker, sb *Superblock)
 func (bgdl *BlockGroupDescriptorList) GetWithAbsoluteInode(n int) (bgd *BlockGroupDescriptor, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

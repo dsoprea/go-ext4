@@ -185,8 +185,7 @@ func (inode *Inode) BlockGroupDescriptor() (bgd *BlockGroupDescriptor) {
 func NewInodeWithReadSeeker(bgd *BlockGroupDescriptor, rs io.ReadSeeker, absoluteInodeNumber int) (inode *Inode, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

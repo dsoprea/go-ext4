@@ -32,8 +32,7 @@ func NewDirectoryBrowser(rs io.ReadSeeker, inode *Inode) *DirectoryBrowser {
 func (db *DirectoryBrowser) Next() (de *DirectoryEntry, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

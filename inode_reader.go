@@ -31,8 +31,7 @@ func (ir *InodeReader) Offset() uint64 {
 func (ir *InodeReader) fill() (err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 
@@ -56,8 +55,7 @@ func (ir *InodeReader) fill() (err error) {
 func (ir *InodeReader) Read(p []byte) (n int, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 
@@ -81,8 +79,7 @@ func (ir *InodeReader) Read(p []byte) (n int, err error) {
 func (ir *InodeReader) Skip(n uint64) (skipped uint64, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

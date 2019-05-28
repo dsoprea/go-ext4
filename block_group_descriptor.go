@@ -54,8 +54,7 @@ type BlockGroupDescriptor struct {
 func NewBlockGroupDescriptorWithReader(r io.Reader, sb *Superblock) (bgd *BlockGroupDescriptor, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

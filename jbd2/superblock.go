@@ -162,8 +162,7 @@ type JournalSuperblock struct {
 func NewJournalSuperblock(r io.Reader) (jsb *JournalSuperblock, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 
@@ -273,8 +272,7 @@ type JournalBlock interface {
 func (jsb *JournalSuperblock) NextBlock(r io.Reader) (jb JournalBlock, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

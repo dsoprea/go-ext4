@@ -22,8 +22,7 @@ var (
 func GetTestInode(inodeNumber int) (f *os.File, inode *Inode, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 
@@ -53,8 +52,7 @@ func GetTestInode(inodeNumber int) (f *os.File, inode *Inode, err error) {
 func GetInode(filesystemPath string, inodeNumber int) (f *os.File, inode *Inode, err error) {
 	defer func() {
 		if state := recover(); state != nil {
-			err := log.Wrap(state.(error))
-			log.Panic(err)
+			err = log.Wrap(state.(error))
 		}
 	}()
 

@@ -223,8 +223,6 @@ func NewInodeWithReadSeeker(bgd *BlockGroupDescriptor, rs io.ReadSeeker, absolut
 	if inode.Flag(InodeFlagIndex) == true {
 		// TODO(dustin): Might be present in large directories. We might need to implement both mechanisms (this and "linear directories").
 		log.Panicf("hash-tree directories not currently supported")
-	} else if inode.Flag(InodeFlagExtents) == false {
-		log.Panicf("only inodes having extent trees are supported")
 	}
 
 	return inode, nil

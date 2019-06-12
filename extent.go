@@ -90,6 +90,19 @@ func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {
 		}
 	}()
 
+	// If the inode is not using extents, its data is stored in inode.i_block.
+	if !en.inode.Flag(InodeFlagExtents) {
+		if en.inode.Size() > uint64(len(en.inode.Data().IBlock)) {
+			log.Panicf("Inode size is %v bytes but does not use extents", en.inode.Size())
+		}
+
+		length := en.inode.Size() - offset
+		data = make([]byte, length)
+
+		copy(data, en.inode.Data().IBlock[offset:en.inode.Size()])
+		return
+	}
+
 	sb := en.inode.BlockGroupDescriptor().Superblock()
 
 	blockSize := uint64(sb.BlockSize())

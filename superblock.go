@@ -410,6 +410,15 @@ func (sb *Superblock) BlockCount() uint64 {
 	}
 }
 
+// FreeBlockCount returns the number of free data blocks in the fs.
+func (sb *Superblock) FreeBlockCount() uint64 {
+	if sb.is64Bit == true {
+		return (uint64(sb.data.SFreeBlocksCountHi) << 32) | uint64(sb.data.SFreeBlocksCountLo)
+	}
+
+	return uint64(sb.data.SFreeBlocksCountLo)
+}
+
 func (sb *Superblock) BlockGroupCount() (blockGroups uint64) {
 	blockGroups = sb.BlockCount() / uint64(sb.data.SBlocksPerGroup)
 

@@ -142,3 +142,22 @@ func ExampleSuperblock_ReadPhysicalBlock() {
 
 	// Output:
 }
+
+func TestSuperblock_FreeBlockCount(t *testing.T) {
+	filepath := path.Join(assetsPath, "tiny.ext4")
+
+	f, err := os.Open(filepath)
+	log.PanicIf(err)
+
+	defer f.Close()
+
+	_, err = f.Seek(Superblock0Offset, io.SeekStart)
+	log.PanicIf(err)
+
+	sb, err := NewSuperblockWithReader(f)
+	log.PanicIf(err)
+
+	if sb.FreeBlockCount() != 155 {
+		t.Fatalf("Supoerblock free blocks count was incorrect.")
+	}
+}

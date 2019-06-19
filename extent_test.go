@@ -38,6 +38,32 @@ func TestExtentNavigator_Read(t *testing.T) {
 	}
 }
 
+func TestExtentNavigator_ReadSymlink(t *testing.T) {
+	f, inode, err := GetTestInode(TestSymlinkInodeNumber)
+	log.PanicIf(err)
+
+	defer f.Close()
+
+	en := NewExtentNavigatorWithReadSeeker(f, inode)
+
+	inodeSize := inode.Size()
+	actualBytes := make([]byte, inodeSize)
+
+	for offset := uint64(0); offset < inodeSize; {
+		data, err := en.Read(offset)
+		log.PanicIf(err)
+
+		copy(actualBytes[offset:], data)
+		offset += uint64(len(data))
+	}
+
+	expectedBytes := []byte("thejungle.txt")
+
+	if bytes.Compare(actualBytes, expectedBytes) != 0 {
+		t.Fatalf("Bytes not read correctly.")
+	}
+}
+
 func ExampleExtentNavigator_Read() {
 	f, inode, err := GetTestInode(TestFileInodeNumber)
 	log.PanicIf(err)

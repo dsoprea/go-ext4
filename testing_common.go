@@ -5,16 +5,17 @@ import (
 	"os"
 	"path"
 
-	"github.com/dsoprea/go-logging"
+	log "github.com/dsoprea/go-logging"
 )
 
 const (
 	TestDirectoryInodeNumber = 2
 	TestFileInodeNumber      = 12
+	TestSymlinkInodeNumber   = 13
 )
 
 var (
-	assetsPath = path.Join(os.Getenv("GOPATH"), "src", "github.com", "dsoprea", "go-ext4", "assets")
+	assetsPath = path.Join(os.Getenv("GOPATH"), "src", "github.com", "davissp14", "go-ext4", "assets")
 )
 
 // GetTestInode returns a test inode struct and `os.File` for the file. It's

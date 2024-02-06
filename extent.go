@@ -8,7 +8,7 @@ import (
 
 	"encoding/binary"
 
-	"github.com/dsoprea/go-logging"
+	log "github.com/dsoprea/go-logging"
 )
 
 const (
@@ -89,6 +89,21 @@ func (en *ExtentNavigator) Read(offset uint64) (data []byte, err error) {
 			err = log.Wrap(state.(error))
 		}
 	}()
+
+	iBlock := en.inode.Data().IBlock
+
+	// If the inode is not using extents, its data is stored in inode.i_block.
+	if en.inode.Flag(InodeFlagExtents) == false {
+		if en.inode.Size() > uint64(len(iBlock)) {
+			log.Panicf("inode size is %d bytes but does not use extents", en.inode.Size())
+		}
+
+		length := en.inode.Size() - offset
+		data = make([]byte, length)
+
+		copy(data, iBlock[offset:offset+length])
+		return
+	}
 
 	sb := en.inode.BlockGroupDescriptor().Superblock()
 

@@ -6,8 +6,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/dsoprea/go-ext4"
-	"github.com/dsoprea/go-logging"
+	"github.com/davissp14/go-ext4"
+	log "github.com/dsoprea/go-logging"
 )
 
 func TestNewJournalSuperblock_NextBlock(t *testing.T) {

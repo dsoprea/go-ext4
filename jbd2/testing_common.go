@@ -5,12 +5,12 @@ import (
 	"os"
 	"path"
 
-	"github.com/dsoprea/go-ext4"
-	"github.com/dsoprea/go-logging"
+	"github.com/davissp14/go-ext4"
+	log "github.com/dsoprea/go-logging"
 )
 
 var (
-	assetsPath = path.Join(os.Getenv("GOPATH"), "src", "github.com", "dsoprea", "go-ext4", "jbd2", "assets")
+	assetsPath = path.Join(os.Getenv("GOPATH"), "src", "github.com", "davissp14", "go-ext4", "jbd2", "assets")
 )
 
 // GetJournalInode returns inode and file structs. It's the responsibility of

@@ -8,7 +8,7 @@ import (
 
 	"io/ioutil"
 
-	"github.com/dsoprea/go-logging"
+	log "github.com/dsoprea/go-logging"
 )
 
 func TestExtentNavigator_Read(t *testing.T) {
@@ -69,4 +69,30 @@ func ExampleExtentNavigator_Read() {
 	// The Project Gutenberg EBook of The Jungle, by Upton Sinclair
 	//
 	// This eBook is for the use of anyo
+}
+
+func TestExtentNavigator_ReadSymlink(t *testing.T) {
+	f, inode, err := GetTestInode(TestSymlinkInodeNumber)
+	log.PanicIf(err)
+
+	defer f.Close()
+
+	en := NewExtentNavigatorWithReadSeeker(f, inode)
+
+	inodeSize := inode.Size()
+	actualBytes := make([]byte, inodeSize)
+
+	for offset := uint64(0); offset < inodeSize; {
+		data, err := en.Read(offset)
+		log.PanicIf(err)
+
+		copy(actualBytes[offset:], data)
+		offset += uint64(len(data))
+	}
+
+	expectedBytes := []byte("thejungle.txt")
+
+	if bytes.Compare(actualBytes, expectedBytes) != 0 {
+		t.Fatalf("Bytes not read correctly.")
+	}
 }
